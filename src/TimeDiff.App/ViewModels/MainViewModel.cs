@@ -219,11 +219,14 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool CompareOnStartup { get; private set; }
 
+    // --no-recursive applies to this session only and is not saved.
+    private bool _forceNonRecursive;
+
     public void ApplyCommandLine(CommandLineOptions options)
     {
         if (options.Left is not null) LeftPath = options.Left;
         if (options.Right is not null) RightPath = options.Right;
-        if (options.NoRecursive) Settings.Recursive = false;
+        _forceNonRecursive = options.NoRecursive;
         CompareOnStartup = options.Compare && options.Left is not null && options.Right is not null;
     }
 
@@ -306,6 +309,7 @@ public sealed partial class MainViewModel : ObservableObject
         ProgressIndeterminate = true;
         StatusText = "Scanning...";
         var options = Settings.ToCompareOptions();
+        if (_forceNonRecursive) options = options with { Recursive = false };
         var progress = new Progress<ScanProgress>(p =>
             StatusText = $"Scanning... {p.ItemsScanned:N0} items  {p.CurrentFolder}");
         var started = DateTime.UtcNow;
