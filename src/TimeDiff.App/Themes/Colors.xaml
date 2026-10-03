@@ -1,0 +1,15 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Comparison colors. Change these to restyle the result grid. -->
+    <SolidColorBrush x:Key="NewerBrush" Color="#1B7F2A" />
+    <SolidColorBrush x:Key="OlderBrush" Color="#7A7A7A" />
+    <SolidColorBrush x:Key="OnlyBrush" Color="#1F5FBF" />
+    <SolidColorBrush x:Key="ErrorBrush" Color="#C42B1C" />
+    <SolidColorBrush x:Key="DiffMarkerBrush" Color="#E07B00" />
+    <SolidColorBrush x:Key="FolderIconBrush" Color="#C99400" />
+    <SolidColorBrush x:Key="FileIconBrush" Color="#6B6B6B" />
+    <SolidColorBrush x:Key="GlyphBrush" Color="#444444" />
+    <SolidColorBrush x:Key="MessageBarBackground" Color="#FDE7E9" />
+    <SolidColorBrush x:Key="WarningBarBackground" Color="#FFF4CE" />
+    <SolidColorBrush x:Key="StatusColumnBackground" Color="#F3F3F3" />
+</ResourceDictionary>

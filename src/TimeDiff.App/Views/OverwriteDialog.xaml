@@ -1,0 +1,39 @@
+<Window x:Class="TimeDiff.App.Views.OverwriteDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="File already exists" SizeToContent="WidthAndHeight" MaxWidth="900" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <StackPanel Margin="14">
+        <Border x:Name="NewerWarning" Background="{DynamicResource WarningBarBackground}" Padding="8,6" Margin="0,0,0,10" Visibility="Collapsed">
+            <TextBlock Foreground="{DynamicResource ErrorBrush}" FontWeight="Bold" TextWrapping="Wrap"
+                       Text="Warning: the destination file is NEWER than the source. Overwriting it replaces the newer version - is the copy direction correct?" />
+        </Border>
+        <TextBlock Text="The destination already contains this file:" Margin="0,0,0,8" />
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition />
+                <RowDefinition />
+                <RowDefinition />
+                <RowDefinition />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Text="Source:" FontWeight="SemiBold" Margin="0,0,10,0" />
+            <TextBlock Grid.Row="0" Grid.Column="1" x:Name="SourcePath" TextWrapping="Wrap" />
+            <TextBlock Grid.Row="1" Grid.Column="1" x:Name="SourceInfo" Foreground="{DynamicResource OlderBrush}" Margin="0,0,0,8" />
+            <TextBlock Grid.Row="2" Text="Destination:" FontWeight="SemiBold" Margin="0,0,10,0" />
+            <TextBlock Grid.Row="2" Grid.Column="1" x:Name="TargetPath" TextWrapping="Wrap" />
+            <TextBlock Grid.Row="3" Grid.Column="1" x:Name="TargetInfo" Foreground="{DynamicResource OlderBrush}" />
+        </Grid>
+        <CheckBox x:Name="ApplyToAll" Content="_Apply to all remaining conflicts" Margin="0,12,0,0" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button x:Name="OverwriteButton" Content="_Overwrite" Style="{StaticResource DialogButton}" Click="Overwrite_Click" />
+            <Button Content="Overwrite if _newer" Style="{StaticResource DialogButton}" Click="OverwriteIfNewer_Click" />
+            <Button Content="_Keep both" Style="{StaticResource DialogButton}" Click="KeepBoth_Click" />
+            <Button x:Name="SkipButton" Content="_Skip" Style="{StaticResource DialogButton}" Click="Skip_Click" />
+            <Button Content="Cancel all" Style="{StaticResource DialogButton}" IsCancel="True" />
+        </StackPanel>
+    </StackPanel>
+</Window>
