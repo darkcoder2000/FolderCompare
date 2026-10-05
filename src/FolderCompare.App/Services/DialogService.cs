@@ -13,6 +13,7 @@ public sealed class DialogService : IDialogService
     private static bool? Show(Window dialog)
     {
         dialog.Owner = Owner;
+        dialog.Icon ??= dialog.Owner?.Icon;
         if (dialog.Owner is null) dialog.WindowStartupLocation = WindowStartupLocation.CenterScreen;
         return dialog.ShowDialog();
     }
