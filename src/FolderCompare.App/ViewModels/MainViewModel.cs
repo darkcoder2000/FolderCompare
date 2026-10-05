@@ -44,6 +44,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly SettingsService _settingsService;
     private readonly IDialogService _dialogs;
     private readonly IShellService _shell;
+    private readonly ITextCompareLauncher _textCompare;
     private readonly ILogger<MainViewModel> _logger;
 
     private readonly Dictionary<DiffNode, RowViewModel> _rowCache = new();
@@ -59,7 +60,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly DispatcherTimer _searchTimer;
 
     public MainViewModel(IFileSystem fs, DiffEngine engine, FileOperationExecutor executor, SettingsService settingsService,
-                         IDialogService dialogs, IShellService shell, ILogger<MainViewModel> logger)
+                         IDialogService dialogs, IShellService shell, ITextCompareLauncher textCompare, ILogger<MainViewModel> logger)
     {
         _fs = fs;
         _engine = engine;
@@ -67,6 +68,7 @@ public sealed partial class MainViewModel : ObservableObject
         _settingsService = settingsService;
         _dialogs = dialogs;
         _shell = shell;
+        _textCompare = textCompare;
         _logger = logger;
 
         _searchTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
@@ -634,6 +636,7 @@ public sealed partial class MainViewModel : ObservableObject
         ExpandSubtreeCommand.NotifyCanExecuteChanged();
         CollapseSubtreeCommand.NotifyCanExecuteChanged();
         ExportReportCommand.NotifyCanExecuteChanged();
+        CompareContentsCommand.NotifyCanExecuteChanged();
     }
 
     // ---- Counts ------------------------------------------------------------------------------
@@ -885,6 +888,44 @@ public sealed partial class MainViewModel : ObservableObject
         await RefreshNodesAsync(_result, [(node.Parent, node.Name), (node.Parent, answer.NewName)]);
         if (errors.Count > 0) _dialogs.ShowError("Rename", string.Join("\n", errors));
     }
+
+    // ---- Text compare -----------------------------------------------------------------------
+
+    private bool CanCompareContents() =>
+        !IsBusy && _result is not null && _selected.Count == 1 &&
+        _selected.First().Node is { IsDirectory: false } node && (node.ExistsLeft || node.ExistsRight);
+
+    [RelayCommand(CanExecute = nameof(CanCompareContents))]
+    private void CompareContents()
+    {
+        if (!CanCompareContents()) return;
+        var result = _result!;
+        var node = _selected.First().Node;
+        _textCompare.Open(new TextCompareRequest(
+            Path.Join(result.RootFor(Side.Left), node.RelativePath), node.ExistsLeft,
+            Path.Join(result.RootFor(Side.Right), node.RelativePath), node.ExistsRight,
+            node.RelativePath,
+            () => _ = RescanAfterTextSaveAsync(result, node.RelativePath)));
+    }
+
+    /// <summary>Refreshes a file's row after the text compare window saved it.</summary>
+    private async Task RescanAfterTextSaveAsync(DiffResult result, string relativePath)
+    {
+        if (!ReferenceEquals(result, _result) || IsBusy) return;
+        var node = result.Root.Descendants().FirstOrDefault(n =>
+            string.Equals(n.RelativePath, relativePath, StringComparison.OrdinalIgnoreCase));
+        if (node?.Parent is null) return;
+        try
+        {
+            await RefreshNodesAsync(result, new[] { (node.Parent, node.Name) });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not rescan {Path} after saving", relativePath);
+        }
+    }
+
+    public bool ConfirmCloseTextCompares() => _textCompare.ConfirmCloseAll();
 
     // ---- Shell integration ------------------------------------------------------------------
 

@@ -70,6 +70,12 @@ public partial class MainWindow : Window, ISelectionHost
 
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
+        if (!_vm.ConfirmCloseTextCompares())
+        {
+            e.Cancel = true;
+            return;
+        }
+
         var s = _vm.Settings;
         var bounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
         s.Window = new WindowSettings
@@ -236,6 +242,9 @@ public partial class MainWindow : Window, ISelectionHost
                 row.IsExpanded = !row.IsExpanded;
                 e.Handled = true;
                 break;
+            case Key.Enter when !row.Node.IsDirectory:
+                Execute(_vm.CompareContentsCommand, e);
+                break;
         }
     }
 
@@ -254,8 +263,13 @@ public partial class MainWindow : Window, ISelectionHost
     private void ResultList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (FindAncestor<ToggleButton>(e.OriginalSource as DependencyObject) is not null) return;
-        if (FindAncestor<ListViewItem>(e.OriginalSource as DependencyObject)?.DataContext is RowViewModel { IsExpandable: true } row)
-            row.IsExpanded = !row.IsExpanded;
+        if (FindAncestor<ListViewItem>(e.OriginalSource as DependencyObject)?.DataContext is not RowViewModel row) return;
+        if (row.IsExpandable) row.IsExpanded = !row.IsExpanded;
+        else if (!row.Node.IsDirectory && _vm.CompareContentsCommand.CanExecute(null))
+        {
+            _vm.CompareContentsCommand.Execute(null);
+            e.Handled = true;
+        }
     }
 
     private void ResultList_HeaderClick(object sender, RoutedEventArgs e)

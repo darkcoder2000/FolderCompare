@@ -12,4 +12,13 @@
     <SolidColorBrush x:Key="MessageBarBackground" Color="#FDE7E9" />
     <SolidColorBrush x:Key="WarningBarBackground" Color="#FFF4CE" />
     <SolidColorBrush x:Key="StatusColumnBackground" Color="#F3F3F3" />
+
+    <!-- Text compare window -->
+    <SolidColorBrush x:Key="TextDiffChangedLineBrush" Color="#FFE6E6" />
+    <SolidColorBrush x:Key="TextDiffChangedTextBrush" Color="#FFAAAA" />
+    <SolidColorBrush x:Key="TextDiffUnimportantLineBrush" Color="#E6EEFF" />
+    <SolidColorBrush x:Key="TextDiffUnimportantTextBrush" Color="#B8CFFF" />
+    <SolidColorBrush x:Key="TextDiffFillerBrush" Color="#F2F2F2" />
+    <SolidColorBrush x:Key="TextDiffFillerHatchBrush" Color="#DDDDDD" />
+    <SolidColorBrush x:Key="TextDiffCurrentSectionBrush" Color="#E07B00" />
 </ResourceDictionary>

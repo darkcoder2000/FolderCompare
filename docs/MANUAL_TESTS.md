@@ -60,3 +60,18 @@ F "$L\conflict" $t0;               New-Item -ItemType Directory "$R\conflict" | 
 - [ ] Compare two trees of 100,000 files each: the UI stays responsive, the scan can be cancelled with Esc, and memory stays under 500 MB.
 - [ ] A folder without read permission shows as an error row, and the scan completes.
 - [ ] Paths longer than 260 characters and Unicode names compare and copy correctly.
+
+## Compare contents (text files)
+- [ ] Double-click a file row, press Enter on it, and use *Tools → Compare contents...* and the context menu: each opens the text compare window. Double-clicking a folder still expands it.
+- [ ] Changed, inserted and deleted lines are red, with hatched filler rows on the other side. Both panes stay aligned when scrolling, including far down a long file (3,000+ lines).
+- [ ] The changed words inside a changed line are highlighted, and the line-details area shows both versions of the current line.
+- [ ] Ctrl+N / Ctrl+P and the toolbar walk through the sections, and the status bar shows "Section x of y".
+- [ ] Ctrl+R / Ctrl+L and the ▶ / ◀ arrows in the middle strip copy a section. Undo in the target pane reverts it in one step.
+- [ ] Selecting several lines and pressing Ctrl+R copies every section in the selection.
+- [ ] Typing in a pane recompares within a moment.
+- [ ] *Ignore whitespace* and *Ignore case* turn those differences blue, and Ctrl+N skips them.
+- [ ] Ctrl+S saves the focused side and keeps its encoding (try UTF-8 BOM, UTF-16, ANSI) and line endings. The main list then shows the new size and time.
+- [ ] Saving after the file was changed by another program asks before overwriting.
+- [ ] A file that exists on one side only opens against an empty pane, and saving that pane creates the file.
+- [ ] A binary file shows "is not a text file". A file larger than 20 MB asks first.
+- [ ] Closing the window, or the main window, with unsaved changes asks Save / Don't save / Cancel, and Cancel keeps it open.

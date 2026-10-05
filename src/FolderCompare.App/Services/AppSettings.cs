@@ -32,6 +32,7 @@ public sealed class AppSettings
     public WindowSettings? Window { get; set; }
     public List<double>? ColumnWidths { get; set; }
     public List<Profile> Profiles { get; set; } = new();
+    public TextCompareSettings TextCompare { get; set; } = new();
 
     public CompareOptions ToCompareOptions() => new()
     {
@@ -82,4 +83,12 @@ public sealed class Profile
     public FilterSettings Filters { get; set; } = new();
 
     public override string ToString() => Name;
+}
+
+public sealed class TextCompareSettings
+{
+    public bool IgnoreWhitespace { get; set; }
+    public bool IgnoreCase { get; set; }
+    public bool ShowWhitespace { get; set; }
+    public WindowSettings? Window { get; set; }
 }

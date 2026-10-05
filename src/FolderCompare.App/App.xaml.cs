@@ -45,6 +45,7 @@ public partial class App : Application
         services.AddSingleton<SettingsService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IShellService, ShellService>();
+        services.AddSingleton<ITextCompareLauncher, TextCompareLauncher>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
         _services = services.BuildServiceProvider();

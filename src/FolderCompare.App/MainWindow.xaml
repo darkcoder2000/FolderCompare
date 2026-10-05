@@ -33,6 +33,8 @@
                 <MenuItem Header="_Delete selected profile" Command="{Binding DeleteProfileCommand}" />
             </MenuItem>
             <MenuItem Header="_Tools">
+                <MenuItem Header="Compare _contents..." Command="{Binding CompareContentsCommand}" InputGestureText="Enter" />
+                <Separator />
                 <MenuItem Header="_Settings..." Command="{Binding OpenSettingsCommand}" />
             </MenuItem>
         </Menu>
@@ -182,6 +184,8 @@
 
             <ListView.ContextMenu>
                 <ContextMenu>
+                    <MenuItem Header="Compare _contents..." Command="{Binding CompareContentsCommand}" InputGestureText="Enter" FontWeight="SemiBold" />
+                    <Separator />
                     <MenuItem Header="Copy to _Right &#x2192;" Command="{Binding CopyToRightCommand}" InputGestureText="Ctrl+Right" />
                     <MenuItem Header="&#x2190; Copy to _Left" Command="{Binding CopyToLeftCommand}" InputGestureText="Ctrl+Left" />
                     <Separator />
