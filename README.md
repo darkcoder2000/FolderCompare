@@ -1,4 +1,4 @@
-# TimeDiff
+# FolderCompare
 
 A lightweight, Beyond Compare-style folder comparison tool for Windows. It compares two directory trees
 **by last-write timestamp only**, shows the result side by side, and lets you copy or delete items from a
@@ -11,22 +11,22 @@ Requires the .NET 8 SDK (Windows).
 ```powershell
 dotnet build
 dotnet test
-dotnet run --project src/TimeDiff.App -- "C:\A" "D:\B" --compare
+dotnet run --project src/FolderCompare.App -- "C:\A" "D:\B" --compare
 ```
 
 ## Publish a single-file exe
 
 ```powershell
-dotnet publish src/TimeDiff.App -c Release -o publish
+dotnet publish src/FolderCompare.App -c Release -o publish
 ```
 
-The Release configuration produces a self-contained, single-file `publish\TimeDiff.exe` (win-x64).
+The Release configuration produces a self-contained, single-file `publish\FolderCompare.exe` (win-x64).
 It needs no installed .NET runtime and no admin rights.
 
 ## Command line
 
 ```
-TimeDiff.exe "C:\A" "D:\B" [--compare] [--no-recursive]
+FolderCompare.exe "C:\A" "D:\B" [--compare] [--no-recursive]
 ```
 
 `--compare` starts the comparison immediately. `--no-recursive` compares only the top level for this session.
@@ -69,15 +69,15 @@ TimeDiff.exe "C:\A" "D:\B" [--compare] [--no-recursive]
 
 ## Files
 
-* Settings: `%APPDATA%\TimeDiff\settings.json` (options, last folders, recent paths, profiles, window and columns)
-* Logs: `%LOCALAPPDATA%\TimeDiff\logs` (daily, kept 14 days; every file operation is logged). Open it via *File → Open log folder*.
+* Settings: `%APPDATA%\FolderCompare\settings.json` (options, last folders, recent paths, profiles, window and columns)
+* Logs: `%LOCALAPPDATA%\FolderCompare\logs` (daily, kept 14 days; every file operation is logged). Open it via *File → Open log folder*.
 
 ## Project layout
 
 ```
-src/TimeDiff.Core/        comparison engine, models, file operations (no WPF dependency)
-src/TimeDiff.App/         WPF app (MVVM with CommunityToolkit.Mvvm)
-tests/TimeDiff.Core.Tests xUnit tests (System.IO.Abstractions mock file system + a few real-FS tests)
+src/FolderCompare.Core/        comparison engine, models, file operations (no WPF dependency)
+src/FolderCompare.App/         WPF app (MVVM with CommunityToolkit.Mvvm)
+tests/FolderCompare.Core.Tests xUnit tests (System.IO.Abstractions mock file system + a few real-FS tests)
 docs/MANUAL_TESTS.md      manual test checklist
 ```
 

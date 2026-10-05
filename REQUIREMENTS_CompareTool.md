@@ -1,4 +1,4 @@
-# Project: TimeDiff – Timestamp-Based Directory Compare Tool (Windows / C# / WPF)
+# Project: FolderCompare – Timestamp-Based Directory Compare Tool (Windows / C# / WPF)
 
 > **Instructions for Claude Code:** Build the application described below. Work in the phases listed in section 12, commit after each phase, and keep the solution building at all times. Ask me before deviating from the tech stack in section 2. Where a requirement says "should", use your judgment; where it says "must", it is mandatory.
 
@@ -21,8 +21,8 @@ Non-goals for v1: content/hash comparison, text diff, three-way compare, remote 
 | UI | WPF |
 | Pattern | MVVM, with `CommunityToolkit.Mvvm` (source generators, `ObservableObject`, `RelayCommand`) |
 | DI / hosting | `Microsoft.Extensions.DependencyInjection` (keep it light) |
-| Logging | `Serilog` with a rolling file sink (`%LOCALAPPDATA%\TimeDiff\logs`) |
-| Settings | JSON file in `%APPDATA%\TimeDiff\settings.json` (`System.Text.Json`) |
+| Logging | `Serilog` with a rolling file sink (`%LOCALAPPDATA%\FolderCompare\logs`) |
+| Settings | JSON file in `%APPDATA%\FolderCompare\settings.json` (`System.Text.Json`) |
 | Recycle bin delete | `Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile/DeleteDirectory` with `RecycleOption.SendToRecycleBin` |
 | Tests | xUnit (+ `System.IO.Abstractions` for a mockable file system) |
 | Packaging | `dotnet publish` as single-file, self-contained, `win-x64` (no installer required) |
@@ -30,10 +30,10 @@ Non-goals for v1: content/hash comparison, text diff, three-way compare, remote 
 Solution layout (suggested):
 
 ```
-TimeDiff.sln
- ├─ src/TimeDiff.Core/        # comparison engine, models, file operations (no UI references)
- ├─ src/TimeDiff.App/         # WPF project (Views, ViewModels, Converters, Resources)
- └─ tests/TimeDiff.Core.Tests/
+FolderCompare.sln
+ ├─ src/FolderCompare.Core/        # comparison engine, models, file operations (no UI references)
+ ├─ src/FolderCompare.App/         # WPF project (Views, ViewModels, Converters, Resources)
+ └─ tests/FolderCompare.Core.Tests/
 ```
 
 The Core project must have **no dependency on WPF** so the engine is fully unit-testable.
@@ -181,7 +181,7 @@ Setting + per-operation dialog with: **Ask each time / Skip / Overwrite / Overwr
 
 ## 6. Sessions, Settings, and Command Line
 
-- **Command line:** `TimeDiff.exe "C:\A" "D:\B" [--compare] [--no-recursive]` pre-fills both folders and optionally starts the comparison immediately.
+- **Command line:** `FolderCompare.exe "C:\A" "D:\B" [--compare] [--no-recursive]` pre-fills both folders and optionally starts the comparison immediately.
 - **Single-instance** not required.
 - **Remember** last-used folder pair, window size/position, column widths, and all options.
 - **Favorites / profiles:** save a named pair of folders plus the options (filters, tolerance) and reopen it from a dropdown or menu.
@@ -212,7 +212,7 @@ Setting + per-operation dialog with: **Ask each time / Skip / Overwrite / Overwr
 - **Reliability:** no unhandled exceptions reaching the user; global exception handler logs and shows a friendly dialog.
 - **Accessibility:** keyboard-operable, readable contrast in both themes, sensible tab order.
 - **Localization:** English only for v1, but keep strings in `.resx` for later translation.
-- **Portability:** produce a single-file `TimeDiff.exe`; no admin rights required.
+- **Portability:** produce a single-file `FolderCompare.exe`; no admin rights required.
 
 ---
 
@@ -238,7 +238,7 @@ Setting + per-operation dialog with: **Ask each time / Skip / Overwrite / Overwr
 
 ## 10. Testing
 
-Unit tests in `TimeDiff.Core.Tests` (use `System.IO.Abstractions.TestingHelpers` for a mock file system) must cover:
+Unit tests in `FolderCompare.Core.Tests` (use `System.IO.Abstractions.TestingHelpers` for a mock file system) must cover:
 
 - Classification of all statuses, including tolerance edge cases (exactly at, just below, just above the threshold).
 - DST ±1 hour handling on/off.
@@ -264,7 +264,7 @@ Also add a small manual test checklist in `docs/MANUAL_TESTS.md`.
 5. Filters, search, and "differences only" work and update instantly.
 6. Settings, last folders, and profiles persist across restarts.
 7. Command-line invocation with two folders works.
-8. Unit tests pass; `dotnet publish` produces a working single-file `TimeDiff.exe`.
+8. Unit tests pass; `dotnet publish` produces a working single-file `FolderCompare.exe`.
 9. No operation ever touches a path outside the two roots.
 
 ---

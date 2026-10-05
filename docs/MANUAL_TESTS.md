@@ -17,7 +17,7 @@ F "$L\conflict" $t0;               New-Item -ItemType Directory "$R\conflict" | 
 ```
 
 ## Comparison
-- [ ] `TimeDiff.exe "%TEMP%\td\left" "%TEMP%\td\right" --compare` opens and compares immediately.
+- [ ] `FolderCompare.exe "%TEMP%\td\left" "%TEMP%\td\right" --compare` opens and compares immediately.
 - [ ] Each status shows its color and glyph: newer side bold green, older side grey, one-sided items blue, conflict red with ⚠, identical in normal text.
 - [ ] `src` shows `≠` and an orange dot on the folder icon; expanding it shows `main.cs` as newer left.
 - [ ] The status bar shows the counts per category.
