@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-A lightweight, Beyond Compare-style folder comparison tool for Windows. It compares two directory trees **by modification timestamp only** (no content or hash comparison in v1), shows the result in a side-by-side UI, and lets the user copy or delete files via a right-click context menu.
+A fast, portable, safety-first folder comparison tool for Windows. It compares two directory trees **by modification timestamp only** (no content or hash comparison in v1), shows the result in a side-by-side UI, and lets the user copy or delete files via a right-click context menu.
 
 Non-goals for v1: content/hash comparison, text diff, three-way compare, remote locations (SFTP/SMB URLs), cross-platform support.
 

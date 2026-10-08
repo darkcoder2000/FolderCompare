@@ -1,6 +1,6 @@
 # FolderCompare
 
-A lightweight, Beyond Compare-style folder comparison tool for Windows. It compares two directory trees
+A fast, portable, safety-first folder comparison tool for Windows. It compares two directory trees
 **by last-write timestamp only**, shows the result side by side, and lets you copy or delete items from a
 right-click menu.
 
@@ -115,3 +115,8 @@ Some requirements items were left out as nice-to-haves: dark theme / system them
 live in `Themes/Colors.xaml`), `.resx` localization, the flat list view mode, and rubber-band selection.
 Content/hash comparison of whole folders, three-way compare and remote locations are out of scope. The engine works
 on `System.IO.Abstractions.IFileSystem`, so another file-system provider can be plugged in later.
+
+## Trademarks
+
+Beyond Compare is a trademark of Scooter Software. FolderCompare is an independent project and is not affiliated
+with or endorsed by Scooter Software.
