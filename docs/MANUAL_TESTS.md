@@ -56,6 +56,15 @@ F "$L\conflict" $t0;               New-Item -ItemType Directory "$R\conflict" | 
 - [ ] Ctrl+E exports CSV and TXT reports of the currently filtered items.
 - [ ] *File → Open log folder* shows the day's log, with one line per file operation.
 
+## Explorer context menu
+- [ ] *Tools → Explorer context menu integration* is unchecked on a fresh machine. Checking it adds *Select as left for FolderCompare* and *Compare to left with FolderCompare* to the right-click menu of files and folders (Windows 11: *Show more options*). The checkmark survives a restart.
+- [ ] *Select as left* on a folder opens no window. The second entry then reads `Compare to "<folder>" with FolderCompare`.
+- [ ] *Compare to* on another folder opens the main window with both paths and compares immediately. The label goes back to *Compare to left*.
+- [ ] Two files open only the text compare window. Closing it exits the app.
+- [ ] A file against a folder, or *Compare to* without a selected left item, shows a message and exits.
+- [ ] Move the exe and start it once: the entries point to the new location.
+- [ ] Unchecking the menu item removes both entries from Explorer.
+
 ## Performance and robustness
 - [ ] Compare two trees of 100,000 files each: the UI stays responsive, the scan can be cancelled with Esc, and memory stays under 500 MB.
 - [ ] A folder without read permission shows as an error row, and the scan completes.

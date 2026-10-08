@@ -35,6 +35,9 @@
             <MenuItem Header="_Tools">
                 <MenuItem Header="Compare _contents..." Command="{Binding CompareContentsCommand}" InputGestureText="Enter" />
                 <Separator />
+                <MenuItem Header="_Explorer context menu integration" IsCheckable="True" IsChecked="{Binding ExplorerIntegration}"
+                          ToolTip="Adds &quot;Select as left&quot; and &quot;Compare to left&quot; to the right-click menu of files and folders in Explorer" />
+                <Separator />
                 <MenuItem Header="_Settings..." Command="{Binding OpenSettingsCommand}" />
             </MenuItem>
         </Menu>

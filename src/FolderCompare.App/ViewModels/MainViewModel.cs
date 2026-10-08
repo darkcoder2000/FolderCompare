@@ -45,6 +45,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IDialogService _dialogs;
     private readonly IShellService _shell;
     private readonly ITextCompareLauncher _textCompare;
+    private readonly IExplorerIntegrationService _explorer;
     private readonly ILogger<MainViewModel> _logger;
 
     private readonly Dictionary<DiffNode, RowViewModel> _rowCache = new();
@@ -60,7 +61,8 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly DispatcherTimer _searchTimer;
 
     public MainViewModel(IFileSystem fs, DiffEngine engine, FileOperationExecutor executor, SettingsService settingsService,
-                         IDialogService dialogs, IShellService shell, ITextCompareLauncher textCompare, ILogger<MainViewModel> logger)
+                         IDialogService dialogs, IShellService shell, ITextCompareLauncher textCompare,
+                         IExplorerIntegrationService explorer, ILogger<MainViewModel> logger)
     {
         _fs = fs;
         _engine = engine;
@@ -69,6 +71,7 @@ public sealed partial class MainViewModel : ObservableObject
         _dialogs = dialogs;
         _shell = shell;
         _textCompare = textCompare;
+        _explorer = explorer;
         _logger = logger;
 
         _searchTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
@@ -81,6 +84,7 @@ public sealed partial class MainViewModel : ObservableObject
         RecentPaths = new ObservableCollection<string>(Settings.RecentPaths);
         Profiles = new ObservableCollection<Profile>(Settings.Profiles);
         LoadFromSettings();
+        _explorerIntegration = _explorer.IsRegistered;
     }
 
     public AppSettings Settings => _settingsService.Current;
@@ -979,6 +983,24 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _dialogs.ShowError("Copy path", ex.Message);
+        }
+    }
+
+    /// <summary>Tools menu checkbox: the "Select as left" / "Compare to left" entries in the Explorer context menu.</summary>
+    [ObservableProperty] private bool _explorerIntegration;
+
+    partial void OnExplorerIntegrationChanged(bool value)
+    {
+        try
+        {
+            if (value) _explorer.Register();
+            else _explorer.Unregister();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not change the Explorer context menu integration");
+            _dialogs.ShowError("Explorer context menu", ex.Message);
+            Dispatcher.CurrentDispatcher.BeginInvoke(() => ExplorerIntegration = _explorer.IsRegistered);
         }
     }
 

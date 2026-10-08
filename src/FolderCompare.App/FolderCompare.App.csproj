@@ -7,7 +7,7 @@
     <AssemblyName>FolderCompare</AssemblyName>
     <RootNamespace>FolderCompare.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Product>FolderCompare</Product>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>

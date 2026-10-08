@@ -45,6 +45,19 @@ FolderCompare.exe "C:\A" "D:\B" [--compare] [--no-recursive]
 
 `--compare` starts the comparison immediately. `--no-recursive` compares only the top level for this session.
 
+### Explorer context menu
+
+Turn on *Tools → Explorer context menu integration* to add two entries to the right-click menu of files and
+folders in Windows Explorer:
+
+1. **Select as left for FolderCompare** remembers the item (no window opens).
+2. **Compare to "…" with FolderCompare** compares the remembered item with the one you right-clicked. Two folders
+   open the main window and compare at once. Two files open the text compare window.
+
+The entries are registered for the current user only (no admin rights) and point to the exe's current location.
+If you move the exe, start it once and the entries are updated. Uncheck the menu item to remove them again.
+On Windows 11 they appear under *Show more options* (or Shift+F10).
+
 ## How it compares
 
 * Files: last write time (UTC). Within the tolerance (default 2 s) they count as identical. Optionally, a

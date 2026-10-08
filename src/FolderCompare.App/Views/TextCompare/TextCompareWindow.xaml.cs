@@ -7,6 +7,7 @@ using System.Windows.Documents;
 using TextRange = FolderCompare.Core.TextDiff.TextRange;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using FolderCompare.App.Services;
 using FolderCompare.Core.TextDiff;
@@ -45,7 +46,7 @@ public partial class TextCompareWindow : Window
         _settings = settings;
         _logger = logger;
         _request = request;
-        Icon = Application.Current.MainWindow?.Icon;
+        Icon = Application.Current.MainWindow?.Icon ?? BitmapFrame.Create(new Uri("pack://application:,,,/Assets/app.ico"));
 
         _left = new Pane(true, LeftEditor, LeftHeader, LeftFormat);
         _right = new Pane(false, RightEditor, RightHeader, RightFormat);
