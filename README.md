@@ -116,6 +116,10 @@ live in `Themes/Colors.xaml`), `.resx` localization, the flat list view mode, an
 Content/hash comparison of whole folders, three-way compare and remote locations are out of scope. The engine works
 on `System.IO.Abstractions.IFileSystem`, so another file-system provider can be plugged in later.
 
+## License
+
+FolderCompare is released under the [MIT License](LICENSE).
+
 ## Trademarks
 
 Beyond Compare is a trademark of Scooter Software. FolderCompare is an independent project and is not affiliated
