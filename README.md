@@ -1,29 +1,43 @@
 # FolderCompare
 
-A fast, portable, safety-first folder comparison tool for Windows. It compares two directory trees
-**by last-write timestamp only**, shows the result side by side, and lets you copy or delete items from a
-right-click menu.
+A fast, portable, safety-first folder comparison tool for Windows.
 
-## Build, test, run
+[![Latest release](https://img.shields.io/github/v/release/darkcoder2000/FolderCompare)](https://github.com/darkcoder2000/FolderCompare/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/darkcoder2000/FolderCompare)](LICENSE)
+![.NET 8](https://img.shields.io/badge/.NET-8-512BD4)
+![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D6)
 
-Requires the .NET 8 SDK (Windows).
+FolderCompare compares two directory trees **by last-write timestamp only**, shows the result side by side, and lets
+you copy, delete or rename items from a right-click menu or the keyboard.
 
-```powershell
-dotnet build
-dotnet test
-dotnet run --project src/FolderCompare.App -- "C:\A" "D:\B" --compare
-```
+![FolderCompare main window](docs/images/MainWindow.png)
 
-## Publish a single-file exe
+<!-- ![Demo: compare two folders and copy a file](docs/images/demo.gif) -->
 
-```powershell
-dotnet publish src/FolderCompare.App -c Release -o publish
-```
+## Download
 
-The Release configuration produces a self-contained, single-file `publish\FolderCompare.exe` (win-x64).
-It needs no installed .NET runtime and no admin rights.
+Get `FolderCompare.exe` from the [latest release](https://github.com/darkcoder2000/FolderCompare/releases/latest)
+and run it. It's a single file for Windows x64, with no installer, no admin rights and no .NET runtime needed.
 
-## Command line
+## Why FolderCompare?
+
+* **Portable single exe.** Nothing to install, no admin rights, no .NET runtime.
+* **Fast on large trees.** It compares timestamps only and never reads file contents during a scan.
+* **Timestamp tolerance.** Configurable tolerance (default 2 s) and an optional 1-hour DST tolerance for NTFS vs.
+  FAT/exFAT/NAS copies.
+* **Safety-first file operations.** Copies use a temp file and rename, targets are checked against the root, deletes
+  go to the Recycle Bin, and every operation is logged.
+* **Built-in text diff.** Side-by-side, word-level highlights, editable panes, and the file's encoding and line
+  endings are kept when you save.
+
+## Quick start
+
+1. Pick the left and right folders (type a path, use *...*, or choose a recent one) and press **Compare** (F5).
+2. Use the *Show* buttons to filter by status. *Differences only* hides identical items.
+3. Select items and copy them with Ctrl+Right / Ctrl+Left, or right-click for copy, delete and rename.
+4. Double-click a file to compare its contents.
+
+### Command line
 
 ```
 FolderCompare.exe "C:\A" "D:\B" [--compare] [--no-recursive]
@@ -68,11 +82,15 @@ FolderCompare.exe "C:\A" "D:\B" [--compare] [--no-recursive]
 | Space | Toggle selection of the focused row |
 | Enter / double-click | Compare contents of the selected file (folders: expand / collapse) |
 
+<!-- ![Context menu](docs/images/ContextMenu.png) -->
+
 ## Compare contents (text files)
 
 Double-click a file row, press Enter, or use *Tools → Compare contents...* (also in the context menu) to open
 the two versions side by side in a separate window. It works for any text file; binary files are refused.
 A file that exists on one side only opens against an empty pane.
+
+![Text compare window](docs/images/FileDiff2.png)
 
 * Lines are aligned: where one side has extra lines, the other shows hatched filler rows.
 * Red marks important differences: a light red line background, with the changed words in stronger red.
@@ -100,21 +118,69 @@ A file that exists on one side only opens against an empty pane.
 * Settings: `%APPDATA%\FolderCompare\settings.json` (options, last folders, recent paths, profiles, window and columns)
 * Logs: `%LOCALAPPDATA%\FolderCompare\logs` (daily, kept 14 days; every file operation is logged). Open it via *File → Open log folder*.
 
-## Project layout
+## Build from source
+
+Requires the .NET 8 SDK (Windows).
+
+```powershell
+dotnet build
+dotnet test
+dotnet run --project src/FolderCompare.App -- "C:\A" "D:\B" --compare
+```
+
+To publish the single-file exe:
+
+```powershell
+dotnet publish src/FolderCompare.App -c Release -o publish
+```
+
+The Release configuration produces a self-contained, single-file `publish\FolderCompare.exe` (win-x64).
+
+### Project layout
 
 ```
 src/FolderCompare.Core/        comparison engine, models, file operations, text diff (no WPF dependency)
 src/FolderCompare.App/         WPF app (MVVM with CommunityToolkit.Mvvm)
 tests/FolderCompare.Core.Tests xUnit tests (System.IO.Abstractions mock file system + a few real-FS tests)
-docs/MANUAL_TESTS.md      manual test checklist
+tools/New-ExampleDiff.ps1      creates two example folders that cover every compare case
+docs/MANUAL_TESTS.md           manual test checklist
 ```
 
-## Not in v1
+## Comparison with other tools
 
-Some requirements items were left out as nice-to-haves: dark theme / system theme follow (colors already
-live in `Themes/Colors.xaml`), `.resx` localization, the flat list view mode, and rubber-band selection.
-Content/hash comparison of whole folders, three-way compare and remote locations are out of scope. The engine works
-on `System.IO.Abstractions.IFileSystem`, so another file-system provider can be plugged in later.
+FolderCompare does one thing: quick timestamp-based folder comparison with safe copy and delete. The tools below are
+mature and do much more. This table is to the best of our knowledge; please check each project's website for
+current details.
+
+| | FolderCompare | WinMerge | Beyond Compare | FreeFileSync |
+|---|---|---|---|---|
+| License | Free, MIT | Free, GPL | Commercial | Free, GPL |
+| Platforms | Windows | Windows | Windows, macOS, Linux | Windows, macOS, Linux |
+| Folder comparison | Timestamp only | Contents, size, date | Contents, size, date | Date and size, or contents |
+| Text diff | Yes, two-way | Yes, two- and three-way | Yes, two- and three-way | No |
+| Focus | Quick comparison, manual copy | Diff and merge | Diff and merge | Folder synchronization |
+
+Use FolderCompare when you want a fast overview of which files differ by date and full control over each copy or delete.
+If you need byte-level folder comparison, three-way merge or automatic sync, one of the other tools is a better fit.
+
+## Roadmap
+
+Planned:
+
+* Dark theme / follow the system theme (colors already live in `Themes/Colors.xaml`)
+* `.resx` localization
+* Flat list view mode
+* Rubber-band selection
+
+Ideas, not planned yet: content/hash comparison of whole folders, three-way compare, remote locations. The engine
+works on `System.IO.Abstractions.IFileSystem`, so another file-system provider can be plugged in later.
+
+## Contributing
+
+Bug reports, ideas and pull requests are welcome. Please open an issue first for bigger changes. Run `dotnet test`
+before submitting. For UI changes, check the relevant items in [docs/MANUAL_TESTS.md](docs/MANUAL_TESTS.md).
+When reporting a bug, include your Windows version, the app version and, if possible, the log file from
+`%LOCALAPPDATA%\FolderCompare\logs`.
 
 ## License
 
