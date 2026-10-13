@@ -3,6 +3,7 @@
 See README.md for features, shortcuts and layout. This file holds working knowledge only.
 
 ## Build & test
+- .NET 10 SDK (all projects target `net10.0` / `net10.0-windows`).
 - `dotnet build`, `dotnet test` (xUnit, all tests must pass before committing).
 - Release exe: `dotnet publish src/FolderCompare.App -c Release -o publish` → single-file self-contained
   `publish\FolderCompare.exe` (~156 MB). Delete `publish\` first so no stale files are left.

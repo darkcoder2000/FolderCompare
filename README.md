@@ -4,7 +4,7 @@ A fast, portable, safety-first folder comparison tool for Windows.
 
 [![Latest release](https://img.shields.io/github/v/release/darkcoder2000/FolderCompare)](https://github.com/darkcoder2000/FolderCompare/releases/latest)
 [![License: MIT](https://img.shields.io/github/license/darkcoder2000/FolderCompare)](LICENSE)
-![.NET 8](https://img.shields.io/badge/.NET-8-512BD4)
+![.NET 10](https://img.shields.io/badge/.NET-10-512BD4)
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D6)
 
 FolderCompare compares two directory trees **by last-write timestamp and size** (with optional byte-by-byte
@@ -162,7 +162,7 @@ A file that exists on one side only opens against an empty pane.
 
 ## Build from source
 
-Requires the .NET 8 SDK (Windows).
+Requires the .NET 10 SDK (Windows).
 
 ```powershell
 dotnet build
