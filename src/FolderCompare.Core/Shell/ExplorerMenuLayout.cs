@@ -2,7 +2,7 @@ using System.IO.Abstractions;
 
 namespace FolderCompare.Core.Shell;
 
-/// <summary>One registry value below HKCU\Software\Classes. An empty <see cref="Name"/> is the key's default value.</summary>
+/// <summary>One registry value below HKCU. An empty <see cref="Name"/> is the key's default value.</summary>
 public sealed record RegistryValue(string SubKey, string Name, string Value);
 
 public enum PairKind
@@ -13,55 +13,88 @@ public enum PairKind
     Missing,
 }
 
-/// <summary>The Explorer context menu entries ("Select as left" / "Compare to left") as registry values.</summary>
+/// <summary>
+/// Registry layout of the Explorer context menu. The entries are <c>IExplorerCommand</c> handlers in
+/// FolderCompare.ShellExt.dll, which decides visibility and titles itself and keeps the selected left item.
+/// The CLSIDs and the <c>Software\FolderCompare</c> value names must match src/FolderCompare.ShellExt/ShellExt.cpp.
+/// </summary>
 public static class ExplorerMenuLayout
 {
-    public const string SelectLeftSwitch = "--select-left";
-    public const string CompareToLeftSwitch = "--compare-to-left";
+    public const string ClassesRoot = @"Software\Classes";
 
+    /// <summary>Holds <see cref="ExePathValue"/>, read by the DLL to start the comparison.</summary>
+    public const string AppKey = @"Software\FolderCompare";
+    public const string ExePathValue = "ExePath";
+
+    /// <summary>The item picked with "Select as left" (values Path, IsFolder). Written and cleared by the DLL.</summary>
+    public const string LeftSelectionKey = @"Software\FolderCompare\LeftSelection";
+
+    public const string CompareVerb = "FolderCompare.Compare";
     public const string SelectLeftVerb = "FolderCompare.SelectLeft";
-    public const string CompareToLeftVerb = "FolderCompare.CompareToLeft";
 
-    public const string SelectLeftLabel = "Select as left for FolderCompare";
-    public const string CompareToLeftLabel = "Compare to left with FolderCompare";
+    /// <summary>Verb of version 1.2.0 (static "Compare to left" entry), removed when registering.</summary>
+    public const string LegacyCompareToLeftVerb = "FolderCompare.CompareToLeft";
+
+    public const string CompareClsid = "{501F238C-E07D-479E-9123-448B4646A913}";
+    public const string SelectLeftClsid = "{0E804BB4-FBFB-4028-B0C3-E348EF8E0F71}";
+
+    public const string DllResourceName = "FolderCompare.ShellExt.dll";
 
     /// <summary>Files and folders.</summary>
     public static readonly IReadOnlyList<string> ClassKeys = new[] { "*", "Directory" };
 
-    /// <summary>The verb keys to delete when unregistering.</summary>
+    public static IReadOnlyList<string> Clsids { get; } = new[] { CompareClsid, SelectLeftClsid };
+
+    /// <summary>All verb keys below <see cref="ClassesRoot"/> to delete before registering and when unregistering.</summary>
     public static IEnumerable<string> VerbKeys() =>
-        ClassKeys.SelectMany(c => new[] { VerbKey(c, SelectLeftVerb), VerbKey(c, CompareToLeftVerb) });
+        ClassKeys.SelectMany(c => new[] { VerbKey(c, CompareVerb), VerbKey(c, SelectLeftVerb), VerbKey(c, LegacyCompareToLeftVerb) });
 
     public static string VerbKey(string classKey, string verb) => $@"{classKey}\shell\{verb}";
 
-    public static string Command(string exePath, string @switch) => $"\"{exePath}\" {@switch} \"%1\"";
+    /// <summary>
+    /// Full HKCU subkeys that only exist in the 1.2.0 layout (static "Compare to left" verb, command-based "Select as
+    /// left"). Any of them present means an old exe registered its entries again and the layout must be rewritten.
+    /// </summary>
+    public static IEnumerable<string> LegacyKeys() =>
+        ClassKeys.SelectMany(c => new[]
+        {
+            $@"{ClassesRoot}\{VerbKey(c, LegacyCompareToLeftVerb)}",
+            $@"{ClassesRoot}\{VerbKey(c, SelectLeftVerb)}\command",
+        });
 
-    /// <summary>Label of the second entry. Shows the name of the pending left item when there is one.</summary>
-    public static string CompareLabel(string? pendingLeft)
-    {
-        if (string.IsNullOrWhiteSpace(pendingLeft)) return CompareToLeftLabel;
-        var name = Path.GetFileName(pendingLeft.TrimEnd('\\', '/'));
-        if (string.IsNullOrEmpty(name)) name = pendingLeft; // drive root like C:\
-        return $"Compare to \"{name}\" with FolderCompare";
-    }
+    public static string ClsidKey(string clsid) => $@"CLSID\{clsid}";
 
-    public static IReadOnlyList<RegistryValue> Build(string exePath, string? pendingLeft)
+    public static string InprocServerKey(string clsid) => $@"{ClassesRoot}\{ClsidKey(clsid)}\InprocServer32";
+
+    /// <summary>File name of the extracted DLL. The content hash keeps a DLL that Explorer still has loaded from being overwritten.</summary>
+    public static string DllFileName(string hash) => $"FolderCompare.ShellExt.{hash}.dll";
+
+    /// <summary>The values to write, as full subkeys of HKCU.</summary>
+    public static IReadOnlyList<RegistryValue> Build(string exePath, string dllPath)
     {
         var icon = $"\"{exePath}\",0";
         var values = new List<RegistryValue>();
+        foreach (var (clsid, name) in new[] { (CompareClsid, "FolderCompare Compare"), (SelectLeftClsid, "FolderCompare Select Left") })
+        {
+            values.Add(new RegistryValue($@"{ClassesRoot}\{ClsidKey(clsid)}", "", name));
+            values.Add(new RegistryValue(InprocServerKey(clsid), "", dllPath));
+            values.Add(new RegistryValue(InprocServerKey(clsid), "ThreadingModel", "Apartment"));
+        }
         foreach (var classKey in ClassKeys)
         {
-            Add(values, VerbKey(classKey, SelectLeftVerb), SelectLeftLabel, icon, Command(exePath, SelectLeftSwitch));
-            Add(values, VerbKey(classKey, CompareToLeftVerb), CompareLabel(pendingLeft), icon, Command(exePath, CompareToLeftSwitch));
+            AddVerb(values, VerbKey(classKey, CompareVerb), CompareClsid, icon);
+            AddVerb(values, VerbKey(classKey, SelectLeftVerb), SelectLeftClsid, icon);
         }
+        values.Add(new RegistryValue(AppKey, ExePathValue, exePath));
         return values;
     }
 
-    private static void Add(List<RegistryValue> values, string verbKey, string label, string icon, string command)
+    private static void AddVerb(List<RegistryValue> values, string verbKey, string clsid, string icon)
     {
-        values.Add(new RegistryValue(verbKey, "MUIVerb", label));
-        values.Add(new RegistryValue(verbKey, "Icon", icon));
-        values.Add(new RegistryValue(verbKey + @"\command", "", command));
+        var key = $@"{ClassesRoot}\{verbKey}";
+        values.Add(new RegistryValue(key, "ExplorerCommandHandler", clsid));
+        values.Add(new RegistryValue(key, "MultiSelectModel", "Player")); // all selected items in one call
+        values.Add(new RegistryValue(key, "Icon", icon));
     }
 
     public static PairKind Classify(IFileSystem fs, string left, string right)

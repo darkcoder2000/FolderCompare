@@ -7,7 +7,7 @@
     <AssemblyName>FolderCompare</AssemblyName>
     <RootNamespace>FolderCompare.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <Product>FolderCompare</Product>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
@@ -34,6 +34,21 @@
     <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
   </ItemGroup>
+
+  <!-- Native Explorer context menu handler (C++, needs the MSVC Build Tools), embedded and extracted on Register. -->
+  <PropertyGroup>
+    <ShellExtDir>$(MSBuildThisFileDirectory)..\FolderCompare.ShellExt\</ShellExtDir>
+    <ShellExtDll>$(ShellExtDir)bin\x64\FolderCompare.ShellExt.dll</ShellExtDll>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ShellExtSource Include="$(ShellExtDir)ShellExt.cpp;$(ShellExtDir)ShellExt.def;$(ShellExtDir)build.ps1" />
+    <EmbeddedResource Include="$(ShellExtDll)" LogicalName="FolderCompare.ShellExt.dll" Link="ShellExt\FolderCompare.ShellExt.dll" />
+  </ItemGroup>
+
+  <Target Name="BuildShellExt" BeforeTargets="BeforeBuild;PrepareForBuild" Inputs="@(ShellExtSource)" Outputs="$(ShellExtDll)">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ShellExtDir)build.ps1&quot;" />
+  </Target>
 
   <ItemGroup>
     <ProjectReference Include="..\FolderCompare.Core\FolderCompare.Core.csproj" />

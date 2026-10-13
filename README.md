@@ -47,16 +47,24 @@ FolderCompare.exe "C:\A" "D:\B" [--compare] [--no-recursive]
 
 ### Explorer context menu
 
-Turn on *Tools → Explorer context menu integration* to add two entries to the right-click menu of files and
-folders in Windows Explorer:
+Turn on *Tools → Explorer context menu integration* to add entries to the right-click menu of files and folders
+in Windows Explorer. The menu shows only the entries that make sense for the current selection:
 
-1. **Select as left for FolderCompare** remembers the item (no window opens).
-2. **Compare to "…" with FolderCompare** compares the remembered item with the one you right-clicked. Two folders
-   open the main window and compare at once. Two files open the text compare window.
+* **One item:** *Select as left for FolderCompare* remembers the item (no window opens). After that, a
+  right-click on another item of the same kind also shows **Compare to "…" with FolderCompare**. This entry
+  doesn't appear on the remembered item itself, on an item of the other kind, or if the remembered item no
+  longer exists.
+* **Two folders** or **two files** selected: *Compare Folders* / *Compare Files*. The first item Explorer
+  reports becomes the left side.
+* A file and a folder, or three or more items: no entries.
 
-The entries are registered for the current user only (no admin rights) and point to the exe's current location.
-If you move the exe, start it once and the entries are updated. Uncheck the menu item to remove them again.
-On Windows 11 they appear under *Show more options* (or Shift+F10).
+Two folders open the main window and compare at once. Two files open the text compare window. Starting a
+comparison forgets the remembered item.
+
+The entries are handled by a small shell extension that is registered for the current user only (no admin
+rights) and points to the exe's current location. If you move the exe, start it once and the entries are
+updated. Uncheck the menu item to remove them again. On Windows 11 they appear under *Show more options* (or
+Shift+F10). The integration requires 64-bit Windows on x64.
 
 ## How it compares
 

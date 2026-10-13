@@ -1,0 +1,4 @@
+LIBRARY "FolderCompare.ShellExt.dll"
+EXPORTS
+    DllGetClassObject PRIVATE
+    DllCanUnloadNow PRIVATE

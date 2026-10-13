@@ -31,6 +31,16 @@ See README.md for features, shortcuts and layout. This file holds working knowle
 - `TextFileCodec` must round-trip encoding, BOM and line endings unchanged.
 - Name clashes seen before: `TextRange` (WPF vs. Core – use an alias), `Window.RestoreBounds`.
 
+## Explorer context menu (src/FolderCompare.ShellExt)
+- Native C++ `IExplorerCommand` DLL (WRL, x64, static CRT), built by `build.ps1` with the MSVC Build Tools from an
+  incremental target in `FolderCompare.App.csproj`, then embedded in the exe. `dotnet build` of the App needs MSVC.
+- Registered per user via `ExplorerCommandHandler` verbs (classic menu, no package). The DLL decides visibility and
+  titles (`GetState`/`GetTitle`), stores the left item in `HKCU\Software\FolderCompare\LeftSelection` and starts
+  `FolderCompare.exe "left" "right" --compare`. CLSIDs and registry names in `ExplorerMenuLayout` must match `ShellExt.cpp`.
+- The DLL is extracted as `%LOCALAPPDATA%\FolderCompare\ShellExt\FolderCompare.ShellExt.<hash>.dll` because Explorer
+  keeps it loaded; `EnsureCurrentPath` re-registers on start when exe or DLL hash changed. Restart Explorer to test changes.
+- `Shell.Application` → `Namespace(dir).ParseName(name).Verbs()` lists the visible entries for single-item checks.
+
 ## Releasing
 1. Bump `<Version>` in `src/FolderCompare.App/FolderCompare.App.csproj` (semver; new feature → minor).
 2. Test, clean Release publish, check the exe's ProductVersion.

@@ -57,13 +57,27 @@ F "$L\conflict" $t0;               New-Item -ItemType Directory "$R\conflict" | 
 - [ ] *File → Open log folder* shows the day's log, with one line per file operation.
 
 ## Explorer context menu
-- [ ] *Tools → Explorer context menu integration* is unchecked on a fresh machine. Checking it adds *Select as left for FolderCompare* and *Compare to left with FolderCompare* to the right-click menu of files and folders (Windows 11: *Show more options*). The checkmark survives a restart.
-- [ ] *Select as left* on a folder opens no window. The second entry then reads `Compare to "<folder>" with FolderCompare`.
-- [ ] *Compare to* on another folder opens the main window with both paths and compares immediately. The label goes back to *Compare to left*.
-- [ ] Two files open only the text compare window. Closing it exits the app.
-- [ ] A file against a folder, or *Compare to* without a selected left item, shows a message and exits.
+Restart Explorer after changing the shell extension (`Stop-Process -Name explorer`). The DLL is extracted to
+`%LOCALAPPDATA%\FolderCompare\ShellExt`. The remembered item is `HKCU\Software\FolderCompare\LeftSelection`.
+- [ ] *Tools → Explorer context menu integration* is unchecked on a fresh machine. Checking it adds the entries (Windows 11: *Show more options*). The checkmark survives a restart.
+- [ ] Fresh state, right-click a folder: only *Select as left…*.
+- [ ] Fresh state, right-click a file: only *Select as left…*.
+- [ ] Folder1 as left, right-click folder2: `Compare to "folder1"…` and *Select as left…*.
+- [ ] Same, right-click folder1 itself: only *Select as left…*.
+- [ ] Folder1 as left, right-click a file: only *Select as left…*.
+- [ ] Folder1 as left, rename or delete folder1, right-click folder2: only *Select as left…*, and the stored left is cleared.
+- [ ] Select 2 folders, right-click: only *Compare Folders*. It opens one main window that compares at once.
+- [ ] Select 2 files, right-click: only *Compare Files*. Only the text compare window opens; closing it exits the app.
+- [ ] Select 1 file + 1 folder, right-click: no FolderCompare entries.
+- [ ] Select 3 items, right-click: no FolderCompare entries.
+- [ ] Folder1 as left → select folder2+folder3, open the menu, close it without executing → right-click folder4: `Compare to "folder1"…` and *Select as left…*.
+- [ ] Folder1 as left → select folder2+folder3, execute *Compare Folders* → right-click folder4: only *Select as left…*.
+- [ ] Folder1 as left, execute `Compare to "folder1"` on folder2 → right-click any folder: only *Select as left…*.
+- [ ] Folder1 as left, *Select as left* on folder2 → right-click folder3: `Compare to "folder2"…`.
+- [ ] The text *Compare to left with FolderCompare* never appears.
+- [ ] Upgrading from 1.2.0 with the integration on: starting the new exe once replaces the old entries. This also works after a 1.2.0 exe registered its entries again (no *Compare to left with FolderCompare* left over).
 - [ ] Move the exe and start it once: the entries point to the new location.
-- [ ] Unchecking the menu item removes both entries from Explorer.
+- [ ] Unchecking the menu item removes all entries from Explorer.
 
 ## Performance and robustness
 - [ ] Compare two trees of 100,000 files each: the UI stays responsive, the scan can be cancelled with Esc, and memory stays under 500 MB.

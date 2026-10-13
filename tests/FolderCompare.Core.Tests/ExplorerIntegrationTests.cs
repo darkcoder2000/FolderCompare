@@ -5,72 +5,77 @@ namespace FolderCompare.Core.Tests;
 
 public class ExplorerIntegrationTests
 {
-    private const string StoreDir = @"C:\appdata\FolderCompare";
+    private const string Exe = @"C:\Program Files\Tools\FolderCompare.exe";
+    private const string Dll = @"C:\Users\me\AppData\Local\FolderCompare\ShellExt\FolderCompare.ShellExt.0123abcd.dll";
 
     [Fact]
-    public void Store_RoundTripsAndClears()
+    public void Build_RegistersBothHandlersPerUser()
     {
-        var store = new ExplorerSelectionStore(Create(), StoreDir);
-        Assert.Null(store.Read());
+        var values = ExplorerMenuLayout.Build(Exe, Dll);
 
-        store.Save(@"C:\some folder\ä file.txt");
-        Assert.Equal(@"C:\some folder\ä file.txt", store.Read());
-
-        store.Save(L);
-        Assert.Equal(L, store.Read());
-
-        store.Clear();
-        Assert.Null(store.Read());
-        store.Clear(); // nothing stored: no exception
-    }
-
-    [Fact]
-    public void Store_EmptyFile_ReadsAsNothing()
-    {
-        var fs = Create();
-        fs.AddFile($@"{StoreDir}\{ExplorerSelectionStore.FileName}", new System.IO.Abstractions.TestingHelpers.MockFileData("  \r\n"));
-        Assert.Null(new ExplorerSelectionStore(fs, StoreDir).Read());
-    }
-
-    [Fact]
-    public void Build_QuotesExeAndArgument()
-    {
-        const string exe = @"C:\Program Files\Tools\FolderCompare.exe";
-        var values = ExplorerMenuLayout.Build(exe, null);
-
-        Assert.Contains(new RegistryValue(@"*\shell\FolderCompare.SelectLeft\command", "",
-            $"\"{exe}\" --select-left \"%1\""), values);
-        Assert.Contains(new RegistryValue(@"Directory\shell\FolderCompare.CompareToLeft\command", "",
-            $"\"{exe}\" --compare-to-left \"%1\""), values);
-        Assert.Contains(new RegistryValue(@"Directory\shell\FolderCompare.SelectLeft", "Icon", $"\"{exe}\",0"), values);
-        Assert.Equal(12, values.Count);
-    }
-
-    [Fact]
-    public void Build_UsesPendingNameInCompareLabel()
-    {
-        var values = ExplorerMenuLayout.Build(@"C:\fc.exe", @"C:\data\project\");
-        Assert.Contains(new RegistryValue(@"*\shell\FolderCompare.CompareToLeft", "MUIVerb",
-            "Compare to \"project\" with FolderCompare"), values);
-        Assert.Contains(new RegistryValue(@"*\shell\FolderCompare.SelectLeft", "MUIVerb",
-            ExplorerMenuLayout.SelectLeftLabel), values);
+        foreach (var clsid in new[] { ExplorerMenuLayout.CompareClsid, ExplorerMenuLayout.SelectLeftClsid })
+        {
+            Assert.Contains(new RegistryValue($@"Software\Classes\CLSID\{clsid}\InprocServer32", "", Dll), values);
+            Assert.Contains(new RegistryValue($@"Software\Classes\CLSID\{clsid}\InprocServer32", "ThreadingModel", "Apartment"), values);
+        }
+        Assert.Contains(new RegistryValue(@"Software\FolderCompare", "ExePath", Exe), values);
+        Assert.All(values, v => Assert.StartsWith(@"Software\", v.SubKey));
     }
 
     [Theory]
-    [InlineData(null, ExplorerMenuLayout.CompareToLeftLabel)]
-    [InlineData("", ExplorerMenuLayout.CompareToLeftLabel)]
-    [InlineData(@"C:\a\notes.txt", "Compare to \"notes.txt\" with FolderCompare")]
-    [InlineData(@"D:\", "Compare to \"D:\\\" with FolderCompare")]
-    public void CompareLabel(string? pending, string expected) =>
-        Assert.Equal(expected, ExplorerMenuLayout.CompareLabel(pending));
+    [InlineData("*")]
+    [InlineData("Directory")]
+    public void Build_VerbsUseExplorerCommandHandlers(string classKey)
+    {
+        var values = ExplorerMenuLayout.Build(Exe, Dll);
+        var compare = $@"Software\Classes\{classKey}\shell\FolderCompare.Compare";
+        var select = $@"Software\Classes\{classKey}\shell\FolderCompare.SelectLeft";
+
+        Assert.Contains(new RegistryValue(compare, "ExplorerCommandHandler", ExplorerMenuLayout.CompareClsid), values);
+        Assert.Contains(new RegistryValue(select, "ExplorerCommandHandler", ExplorerMenuLayout.SelectLeftClsid), values);
+        Assert.Contains(new RegistryValue(compare, "MultiSelectModel", "Player"), values);
+        Assert.Contains(new RegistryValue(select, "MultiSelectModel", "Player"), values);
+        Assert.Contains(new RegistryValue(compare, "Icon", $"\"{Exe}\",0"), values);
+    }
 
     [Fact]
-    public void VerbKeys_CoverFilesAndFolders() =>
+    public void Build_HasNoStaticLabelsOrCommands()
+    {
+        var values = ExplorerMenuLayout.Build(Exe, Dll);
+        Assert.DoesNotContain(values, v => v.Name == "MUIVerb");
+        Assert.DoesNotContain(values, v => v.SubKey.EndsWith(@"\command", StringComparison.Ordinal));
+        Assert.DoesNotContain(values, v => v.Value.Contains("Compare to left", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(2 * 3 + 2 * 2 * 3 + 1, values.Count);
+    }
+
+    [Fact]
+    public void CompareVerbSortsBeforeSelectLeft() =>
+        Assert.True(string.CompareOrdinal(ExplorerMenuLayout.CompareVerb, ExplorerMenuLayout.SelectLeftVerb) < 0);
+
+    [Fact]
+    public void VerbKeys_IncludeLegacyCompareToLeft() =>
         Assert.Equal(new[]
         {
-            @"*\shell\FolderCompare.SelectLeft", @"*\shell\FolderCompare.CompareToLeft",
-            @"Directory\shell\FolderCompare.SelectLeft", @"Directory\shell\FolderCompare.CompareToLeft",
+            @"*\shell\FolderCompare.Compare", @"*\shell\FolderCompare.SelectLeft", @"*\shell\FolderCompare.CompareToLeft",
+            @"Directory\shell\FolderCompare.Compare", @"Directory\shell\FolderCompare.SelectLeft", @"Directory\shell\FolderCompare.CompareToLeft",
         }, ExplorerMenuLayout.VerbKeys());
+
+    [Fact]
+    public void LegacyKeys_AreNeverWrittenByBuild()
+    {
+        Assert.Equal(new[]
+        {
+            @"Software\Classes\*\shell\FolderCompare.CompareToLeft", @"Software\Classes\*\shell\FolderCompare.SelectLeft\command",
+            @"Software\Classes\Directory\shell\FolderCompare.CompareToLeft", @"Software\Classes\Directory\shell\FolderCompare.SelectLeft\command",
+        }, ExplorerMenuLayout.LegacyKeys());
+
+        var written = ExplorerMenuLayout.Build(Exe, Dll).Select(v => v.SubKey).ToHashSet();
+        Assert.All(ExplorerMenuLayout.LegacyKeys(), k => Assert.DoesNotContain(k, written));
+    }
+
+    [Fact]
+    public void DllFileName_ContainsHash() =>
+        Assert.Equal("FolderCompare.ShellExt.0123abcd.dll", ExplorerMenuLayout.DllFileName("0123abcd"));
 
     [Fact]
     public void Classify()
