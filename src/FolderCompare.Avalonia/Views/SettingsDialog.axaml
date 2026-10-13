@@ -1,0 +1,73 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:services="clr-namespace:FolderCompare.App.Services"
+        x:Class="FolderCompare.App.Views.SettingsDialog"
+        x:DataType="services:AppSettings"
+        Title="Settings" Width="580" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Icon="/Assets/app.ico">
+    <Window.Styles>
+        <Style Selector="CheckBox">
+            <Setter Property="Margin" Value="0,2" />
+        </Style>
+        <Style Selector="TextBlock.label">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,4,10,4" />
+        </Style>
+        <Style Selector="TextBlock.hint">
+            <Setter Property="Foreground" Value="{DynamicResource HintTextBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="28,0,0,4" />
+        </Style>
+        <Style Selector="GroupBox">
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+    </Window.Styles>
+    <StackPanel Margin="14">
+        <GroupBox Header="Comparison">
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                <TextBlock Classes="label" Text="Timestamp tolerance (seconds):" />
+                <NumericUpDown Grid.Column="1" Width="130" HorizontalAlignment="Left" Margin="0,2" Minimum="0" Increment="1" FormatString="0.###"
+                               Value="{Binding ToleranceSeconds}" />
+                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="hint"
+                           Text="Files saved within this window on both sides are treated as same-time; real changes in that window can be missed unless content verification is on." />
+                <CheckBox Grid.Row="2" Grid.ColumnSpan="2" Content="Ignore exactly ±1 hour differences (_DST / time zone)" IsChecked="{Binding IgnoreDstOffset}" />
+                <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Classes="hint"
+                           Text="A real change exactly 1 hour apart will be treated as same-time." />
+                <TextBlock Grid.Row="4" Classes="label" Text="Verify file contents:" />
+                <ComboBox Grid.Row="4" Grid.Column="1" x:Name="ContentCombo" Width="260" Margin="0,2" />
+                <TextBlock Grid.Row="5" Grid.ColumnSpan="2" Classes="hint"
+                           Text="File size is always compared. Verification reads both files byte by byte after the scan, which takes longer for large folders." />
+                <TextBlock Grid.Row="6" Classes="label" Text="Symbolic links / junctions:" />
+                <ComboBox Grid.Row="6" Grid.Column="1" x:Name="SymlinkCombo" Width="130" Margin="0,2" />
+                <CheckBox Grid.Row="7" Grid.ColumnSpan="2" x:Name="HiddenCheck" Content="Ignore _hidden and system files" IsChecked="{Binding IgnoreHiddenAndSystem}" />
+                <CheckBox Grid.Row="8" Grid.ColumnSpan="2" Content="Compare sub_folders (recursive)" IsChecked="{Binding Recursive}" />
+                <TextBlock Grid.Row="9" Classes="label" Text="Exclude patterns:" />
+                <TextBox Grid.Row="9" Grid.Column="1" Margin="0,2" Text="{Binding ExcludePatterns}" ToolTip.Tip="e.g. *.tmp;.git;node_modules;bin;obj" />
+                <TextBlock Grid.Row="10" Classes="label" Text="Include patterns:" />
+                <TextBox Grid.Row="10" Grid.Column="1" Margin="0,2" Text="{Binding IncludePatterns}" ToolTip.Tip="Empty = all files" />
+            </Grid>
+        </GroupBox>
+
+        <GroupBox Header="File operations">
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                <TextBlock Classes="label" Text="Overwrite policy:" />
+                <ComboBox Grid.Column="1" x:Name="OverwriteCombo" Width="180" Margin="0,2" />
+                <CheckBox Grid.Row="1" Grid.ColumnSpan="2" x:Name="RecycleCheck" IsChecked="{Binding DeleteToRecycleBin}" />
+                <CheckBox Grid.Row="2" Grid.ColumnSpan="2" x:Name="ConfirmRecycleCheck" IsChecked="{Binding ConfirmRecycleDelete}" />
+                <TextBlock Grid.Row="3" Classes="label" Text="Skip copy preview for fewer than (items):" />
+                <NumericUpDown Grid.Row="3" Grid.Column="1" Width="130" HorizontalAlignment="Left" Margin="0,2" Minimum="0" Increment="1" FormatString="0"
+                               Value="{Binding PreviewThreshold}" ToolTip.Tip="0 = always show the preview" />
+            </Grid>
+        </GroupBox>
+
+        <GroupBox Header="View">
+            <CheckBox Content="Sort _folders before files" IsChecked="{Binding FoldersFirst}" />
+        </GroupBox>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+            <Button Content="_OK" IsDefault="True" Classes="dialog" Click="Ok_Click" />
+            <Button Content="_Cancel" IsCancel="True" Classes="dialog" Click="Cancel_Click" />
+        </StackPanel>
+    </StackPanel>
+</Window>

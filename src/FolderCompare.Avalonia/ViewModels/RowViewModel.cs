@@ -1,5 +1,9 @@
 using System.Globalization;
+#if AVALONIA
+using Avalonia;
+#else
 using System.Windows;
+#endif
 using CommunityToolkit.Mvvm.ComponentModel;
 using FolderCompare.Core.Models;
 
@@ -15,6 +19,14 @@ public enum SideState
     Error,
     /// <summary>Same timestamp but different content: neither side can be called newer.</summary>
     Conflict,
+}
+
+public enum IconKind
+{
+    None,
+    Folder,
+    File,
+    Warning,
 }
 
 /// <summary>One visible row of the side-by-side tree grid; wraps a <see cref="DiffNode"/>.</summary>
@@ -67,6 +79,8 @@ public sealed class RowViewModel : ObservableObject
     public string RightDate => Node.Right is null ? "" : FormatDate(Node.Right.LastWriteUtc);
     public string LeftIcon => Icon(Node.Left);
     public string RightIcon => Icon(Node.Right);
+    public IconKind LeftIconKind => Kind(Node.Left);
+    public IconKind RightIconKind => Kind(Node.Right);
     public SideState LeftState => State(Side.Left);
     public SideState RightState => State(Side.Right);
     public bool ShowDiffMarker => Node.IsDirectory && Node.Status == DiffStatus.Differs;
@@ -90,11 +104,19 @@ public sealed class RowViewModel : ObservableObject
 
     internal void NotifyExpanded() => OnPropertyChanged(nameof(IsExpanded));
 
-    private string Icon(FileInfoSnapshot? snap)
+    private string Icon(FileInfoSnapshot? snap) => Kind(snap) switch
     {
-        if (snap is null) return "";
-        if (Node.Status is DiffStatus.Error or DiffStatus.TypeConflict) return WarningGlyph;
-        return snap.IsDirectory ? FolderGlyph : FileGlyph;
+        IconKind.Warning => WarningGlyph,
+        IconKind.Folder => FolderGlyph,
+        IconKind.File => FileGlyph,
+        _ => "",
+    };
+
+    private IconKind Kind(FileInfoSnapshot? snap)
+    {
+        if (snap is null) return IconKind.None;
+        if (Node.Status is DiffStatus.Error or DiffStatus.TypeConflict) return IconKind.Warning;
+        return snap.IsDirectory ? IconKind.Folder : IconKind.File;
     }
 
     private SideState State(Side side)

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FolderCompare.App.Services;
 
-/// <summary>Loads and saves <see cref="AppSettings"/> as JSON in %APPDATA%\FolderCompare\settings.json.</summary>
+/// <summary>Loads and saves <see cref="AppSettings"/> as JSON in <see cref="SettingsDirectory"/>/settings.json.</summary>
 public sealed class SettingsService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -22,8 +22,10 @@ public sealed class SettingsService
         Current = Load();
     }
 
-    public static string SettingsDirectory =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FolderCompare");
+    /// <summary>%APPDATA%\FolderCompare on Windows, ~/.config/FolderCompare on Linux, ~/Library/Application Support/FolderCompare on macOS.</summary>
+    public static string SettingsDirectory => OperatingSystem.IsMacOS()
+        ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "FolderCompare")
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FolderCompare");
 
     public static string SettingsPath => Path.Combine(SettingsDirectory, "settings.json");
 

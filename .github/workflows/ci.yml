@@ -37,3 +37,7 @@ jobs:
       - name: Test Core (Linux/macOS)
         if: runner.os != 'Windows'
         run: dotnet test tests/FolderCompare.Core.Tests -c Release
+
+      - name: Build Avalonia app (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: dotnet build src/FolderCompare.Avalonia -c Release

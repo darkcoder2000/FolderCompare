@@ -1,0 +1,11 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FolderCompare.App.Views.MessageDialog"
+        Title="FolderCompare" SizeToContent="WidthAndHeight" MinWidth="320" MaxWidth="720" CanResize="False"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Icon="/Assets/app.ico">
+    <DockPanel Margin="16" LastChildFill="True">
+        <StackPanel x:Name="Buttons" DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0" />
+        <PathIcon x:Name="KindIcon" DockPanel.Dock="Left" Width="28" Height="28" VerticalAlignment="Top" Margin="0,0,14,0" />
+        <SelectableTextBlock x:Name="MessageText" TextWrapping="Wrap" VerticalAlignment="Center" />
+    </DockPanel>
+</Window>

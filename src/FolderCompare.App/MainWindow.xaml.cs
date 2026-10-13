@@ -71,7 +71,8 @@ public partial class MainWindow : Window, ISelectionHost
 
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
-        if (!_vm.ConfirmCloseTextCompares())
+        // The WPF dialogs are synchronous, so this task has already completed.
+        if (!_vm.ConfirmCloseTextComparesAsync().GetAwaiter().GetResult())
         {
             e.Cancel = true;
             return;

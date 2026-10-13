@@ -1,0 +1,294 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:FolderCompare.App.ViewModels"
+        xmlns:conv="clr-namespace:FolderCompare.App.Converters"
+        x:Class="FolderCompare.App.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="FolderCompare" Icon="/Assets/app.ico" Width="1280" Height="780" MinWidth="700" MinHeight="400"
+        WindowStartupLocation="CenterScreen">
+
+    <DockPanel>
+        <!-- Menu -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem Header="_Compare / Refresh" Command="{Binding CompareCommand}" InputGesture="F5" />
+                <MenuItem Header="Rescan _selected" Command="{Binding RefreshSelectedCommand}" />
+                <MenuItem x:Name="ExportMenu" Header="_Export report..." Command="{Binding ExportReportCommand}" />
+                <Separator />
+                <MenuItem Header="Open _log folder" Command="{Binding OpenLogFolderCommand}" />
+                <Separator />
+                <MenuItem Header="E_xit" Click="Exit_Click" />
+            </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem Header="_Expand all" Command="{Binding ExpandAllCommand}" />
+                <MenuItem Header="_Collapse all" Command="{Binding CollapseAllCommand}" />
+                <Separator />
+                <MenuItem Header="_Folders before files" ToggleType="CheckBox" IsChecked="{Binding FoldersFirst}" />
+            </MenuItem>
+            <MenuItem Header="_Profiles">
+                <MenuItem Header="_Save current as profile..." Command="{Binding SaveProfileCommand}" />
+                <MenuItem Header="_Delete selected profile" Command="{Binding DeleteProfileCommand}" />
+            </MenuItem>
+            <MenuItem Header="_Tools">
+                <MenuItem Header="Compare _contents..." Command="{Binding CompareContentsCommand}" InputGesture="Enter" />
+                <Separator IsVisible="{Binding ExplorerIntegrationSupported}" />
+                <MenuItem Header="_Explorer context menu integration" ToggleType="CheckBox" IsChecked="{Binding ExplorerIntegration}"
+                          IsVisible="{Binding ExplorerIntegrationSupported}"
+                          ToolTip.Tip="Adds &quot;Select as left&quot;, &quot;Compare to ...&quot; and &quot;Compare Folders/Files&quot; to the right-click menu of files and folders in Explorer" />
+                <Separator />
+                <MenuItem Header="_Settings..." Command="{Binding OpenSettingsCommand}" />
+            </MenuItem>
+        </Menu>
+
+        <!-- Folder bar -->
+        <Grid DockPanel.Dock="Top" Margin="6,6,6,2" ColumnDefinitions="*,Auto,Auto,*,Auto,Auto" RowDefinitions="Auto,Auto">
+            <ComboBox Grid.Column="0" x:Name="LeftPathBox" IsEditable="True" Tag="Left" HorizontalAlignment="Stretch"
+                      ItemsSource="{Binding RecentPaths}" Text="{Binding LeftPath, Mode=TwoWay}"
+                      DragDrop.AllowDrop="True" AutomationProperties.Name="Left folder"
+                      ToolTip.Tip="Left folder (type, paste or drop a folder)" />
+            <Button Grid.Column="1" Content="..." Width="30" Margin="3,0,0,0" ToolTip.Tip="Browse for the left folder"
+                    Command="{Binding BrowseCommand}" CommandParameter="Left" />
+            <Button Grid.Column="2" x:Name="SwapButton" Width="34" Margin="8,0" ToolTip.Tip="Swap left and right"
+                    Command="{Binding SwapCommand}" HorizontalContentAlignment="Center">
+                <PathIcon Data="{StaticResource IconSwap}" Width="16" Height="16" />
+            </Button>
+            <ComboBox Grid.Column="3" x:Name="RightPathBox" IsEditable="True" Tag="Right" HorizontalAlignment="Stretch"
+                      ItemsSource="{Binding RecentPaths}" Text="{Binding RightPath, Mode=TwoWay}"
+                      DragDrop.AllowDrop="True" AutomationProperties.Name="Right folder"
+                      ToolTip.Tip="Right folder (type, paste or drop a folder)" />
+            <Button Grid.Column="4" Content="..." Width="30" Margin="3,0,0,0" ToolTip.Tip="Browse for the right folder"
+                    Command="{Binding BrowseCommand}" CommandParameter="Right" />
+            <Button Grid.Column="5" Content="_Compare" Margin="8,0,0,0" Padding="14,4" FontWeight="SemiBold"
+                    ToolTip.Tip="Compare / refresh (F5)" Command="{Binding CompareCommand}" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding LeftPathError}" Foreground="{DynamicResource ErrorBrush}"
+                       IsVisible="{Binding LeftPathError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="2,2,0,0" />
+            <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding RightPathError}" Foreground="{DynamicResource ErrorBrush}"
+                       IsVisible="{Binding RightPathError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="2,2,0,0" />
+        </Grid>
+
+        <Border DockPanel.Dock="Top" Background="{DynamicResource MessageBarBackground}" Padding="8,4" Margin="6,2"
+                IsVisible="{Binding RootError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{Binding RootError}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap" />
+        </Border>
+
+        <!-- Toolbars -->
+        <WrapPanel DockPanel.Dock="Top" Classes="toolbar" Margin="4,2">
+            <TextBlock Text="Show:" />
+            <ToggleButton IsChecked="{Binding ShowOnlyLeft}" ToolTip.Tip="Show items that exist only on the left">
+                <TextBlock Text="Only left" Foreground="{DynamicResource OnlyBrush}" />
+            </ToggleButton>
+            <ToggleButton IsChecked="{Binding ShowNewerLeft}" ToolTip.Tip="Show items that are newer on the left">
+                <TextBlock Text="Newer left" Foreground="{DynamicResource NewerBrush}" FontWeight="Bold" />
+            </ToggleButton>
+            <ToggleButton IsChecked="{Binding ShowIdentical}" ToolTip.Tip="Show identical items" Content="Identical" />
+            <ToggleButton IsChecked="{Binding ShowTimeOnly}" Content="Time only"
+                          ToolTip.Tip="Show files whose content was verified identical but whose timestamps differ" />
+            <ToggleButton IsChecked="{Binding ShowNewerRight}" ToolTip.Tip="Show items that are newer on the right">
+                <TextBlock Text="Newer right" Foreground="{DynamicResource NewerBrush}" FontWeight="Bold" />
+            </ToggleButton>
+            <ToggleButton IsChecked="{Binding ShowOnlyRight}" ToolTip.Tip="Show items that exist only on the right">
+                <TextBlock Text="Only right" Foreground="{DynamicResource OnlyBrush}" />
+            </ToggleButton>
+            <ToggleButton IsChecked="{Binding ShowSameTimeDifferent}"
+                          ToolTip.Tip="Show files with the same timestamp but different size or content (direction unknown)">
+                <TextBlock Text="Same time, different" Foreground="{DynamicResource ConflictBrush}" FontWeight="Bold" />
+            </ToggleButton>
+            <ToggleButton IsChecked="{Binding ShowErrors}" ToolTip.Tip="Show errors and file/folder conflicts">
+                <TextBlock Text="Errors" Foreground="{DynamicResource ErrorBrush}" />
+            </ToggleButton>
+            <Separator />
+            <ToggleButton IsChecked="{Binding DifferencesOnly}" Content="Differences only"
+                          ToolTip.Tip="Hide identical items and folders without differences" />
+            <Separator />
+            <TextBlock Text="Search:" />
+            <TextBox x:Name="SearchBox" Width="160" Text="{Binding SearchText}" VerticalContentAlignment="Center"
+                     AutomationProperties.Name="Search" ToolTip.Tip="Filter by file or folder name (Ctrl+F)" />
+            <Separator />
+            <Button x:Name="CopyRightButton" Command="{Binding CopyToRightCommand}" Content="Copy →" />
+            <Button x:Name="CopyLeftButton" Command="{Binding CopyToLeftCommand}" Content="← Copy" />
+            <Button Command="{Binding DeleteCommand}" ToolTip.Tip="Delete selection (Del)" Content="Delete" />
+            <Separator />
+            <Button Command="{Binding CompareCommand}" ToolTip.Tip="Rescan (F5)" Content="Refresh" />
+            <Button Command="{Binding ExpandAllCommand}" ToolTip.Tip="Expand all folders" Content="Expand all" />
+            <Button Command="{Binding CollapseAllCommand}" ToolTip.Tip="Collapse all folders" Content="Collapse all" />
+            <Button Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Settings" Content="Options" />
+        </WrapPanel>
+        <WrapPanel DockPanel.Dock="Top" Classes="toolbar" Margin="4,0,4,4">
+            <TextBlock Text="Exclude:" />
+            <TextBox Width="220" Text="{Binding ExcludePatterns}" VerticalContentAlignment="Center"
+                     AutomationProperties.Name="Exclude patterns"
+                     ToolTip.Tip="Glob patterns to skip, separated by ';' (e.g. *.tmp;.git;node_modules;bin;obj). Applied on the next scan." />
+            <TextBlock Text="Include:" />
+            <TextBox Width="140" Text="{Binding IncludePatterns}" VerticalContentAlignment="Center"
+                     AutomationProperties.Name="Include patterns"
+                     ToolTip.Tip="Only compare files matching these patterns, separated by ';' (empty = all files). Applied on the next scan." />
+            <Separator />
+            <TextBlock Text="Profile:" />
+            <ComboBox Width="160" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
+                      AutomationProperties.Name="Profile" ToolTip.Tip="Load a saved folder pair with its options" />
+            <Button Command="{Binding SaveProfileCommand}" Content="Save" ToolTip.Tip="Save the current folders and options as a profile" />
+            <Button Command="{Binding DeleteProfileCommand}" Content="Remove" ToolTip.Tip="Delete the selected profile" />
+        </WrapPanel>
+
+        <!-- Status bar -->
+        <Border DockPanel.Dock="Bottom" Classes="statusbar">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Cancel (Esc)" Command="{Binding CancelCommand}" Padding="8,0"
+                        IsVisible="{Binding IsBusy}" Margin="6,0,0,0" />
+                <ProgressBar DockPanel.Dock="Right" Width="80" Height="12" MinWidth="0" Value="{Binding FileProgressValue}"
+                             ToolTip.Tip="Current file" IsVisible="{Binding IsOperating}" Margin="6,0,0,0" />
+                <ProgressBar DockPanel.Dock="Right" Width="160" Height="12" MinWidth="0" Value="{Binding ProgressValue}"
+                             IsIndeterminate="{Binding ProgressIndeterminate}" ToolTip.Tip="Overall progress"
+                             IsVisible="{Binding IsBusy}" Margin="6,0,0,0" />
+                <TextBlock DockPanel.Dock="Left" Text="{Binding CountsText}" VerticalAlignment="Center" />
+                <Separator DockPanel.Dock="Left" />
+                <TextBlock DockPanel.Dock="Left" Text="{Binding SelectionText}" VerticalAlignment="Center" />
+                <Separator DockPanel.Dock="Left" />
+                <TextBlock Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </DockPanel>
+        </Border>
+
+        <!-- Side-by-side tree grid: one row per relative path -->
+        <DataGrid x:Name="ResultList" ItemsSource="{Binding Rows}" SelectionMode="Extended" IsReadOnly="True"
+                  CanUserReorderColumns="False" CanUserResizeColumns="True" CanUserSortColumns="True"
+                  HeadersVisibility="Column" GridLinesVisibility="None" RowHeight="22"
+                  AutomationProperties.Name="Comparison results" FontSize="13">
+            <DataGrid.Styles>
+                <Style Selector="DataGridRow" x:DataType="vm:RowViewModel">
+                    <Setter Property="ToolTip.Tip" Value="{Binding ToolTip}" />
+                </Style>
+            </DataGrid.Styles>
+
+            <DataGrid.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Compare _contents..." Command="{Binding CompareContentsCommand}" InputGesture="Enter" FontWeight="SemiBold" />
+                    <Separator />
+                    <MenuItem x:Name="CopyRightMenu" Header="Copy to _Right →" Command="{Binding CopyToRightCommand}" />
+                    <MenuItem x:Name="CopyLeftMenu" Header="← Copy to _Left" Command="{Binding CopyToLeftCommand}" />
+                    <Separator />
+                    <MenuItem Header="Delete Left" Command="{Binding DeleteLeftCommand}" />
+                    <MenuItem Header="Delete Right" Command="{Binding DeleteRightCommand}" />
+                    <MenuItem Header="Delete Both" Command="{Binding DeleteBothCommand}" />
+                    <Separator />
+                    <MenuItem Header="Re_name..." Command="{Binding RenameCommand}" InputGesture="F2" />
+                    <MenuItem Header="_Open">
+                        <MenuItem Header="Left" Command="{Binding OpenCommand}" CommandParameter="Left" />
+                        <MenuItem Header="Right" Command="{Binding OpenCommand}" CommandParameter="Right" />
+                    </MenuItem>
+                    <MenuItem Header="Open containing _folder">
+                        <MenuItem Header="Left" Command="{Binding OpenContainingFolderCommand}" CommandParameter="Left" />
+                        <MenuItem Header="Right" Command="{Binding OpenContainingFolderCommand}" CommandParameter="Right" />
+                    </MenuItem>
+                    <MenuItem Header="{Binding FileManagerName, StringFormat='Show in {0}'}">
+                        <MenuItem Header="Left" Command="{Binding ShowInFileManagerCommand}" CommandParameter="Left" />
+                        <MenuItem Header="Right" Command="{Binding ShowInFileManagerCommand}" CommandParameter="Right" />
+                    </MenuItem>
+                    <MenuItem Header="Copy full _path">
+                        <MenuItem Header="Left" Command="{Binding CopyPathCommand}" CommandParameter="Left" />
+                        <MenuItem Header="Right" Command="{Binding CopyPathCommand}" CommandParameter="Right" />
+                        <MenuItem Header="Both" Command="{Binding CopyPathCommand}" CommandParameter="Both" />
+                    </MenuItem>
+                    <Separator />
+                    <MenuItem Header="Select all newer on left" Command="{Binding SelectByStatusCommand}" CommandParameter="NewerLeft" />
+                    <MenuItem Header="Select all newer on right" Command="{Binding SelectByStatusCommand}" CommandParameter="NewerRight" />
+                    <MenuItem Header="Select all only-left" Command="{Binding SelectByStatusCommand}" CommandParameter="OnlyLeft" />
+                    <MenuItem Header="Select all only-right" Command="{Binding SelectByStatusCommand}" CommandParameter="OnlyRight" />
+                    <MenuItem Header="Select all same time, different content" Command="{Binding SelectByStatusCommand}" CommandParameter="SameTimeDifferentContent" />
+                    <MenuItem Header="Invert selection" Command="{Binding InvertSelectionCommand}" />
+                    <Separator />
+                    <MenuItem Header="Expand subtree" Command="{Binding ExpandSubtreeCommand}" />
+                    <MenuItem Header="Collapse subtree" Command="{Binding CollapseSubtreeCommand}" />
+                    <MenuItem Header="Rescan selected" Command="{Binding RefreshSelectedCommand}" />
+                </ContextMenu>
+            </DataGrid.ContextMenu>
+
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Header="Left name" Tag="Name" Width="320" SortMemberPath="Name">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RowViewModel">
+                            <StackPanel Orientation="Horizontal" Margin="{Binding Indent}">
+                                <Panel Width="16">
+                                    <ToggleButton Classes="expander" IsChecked="{Binding IsExpanded, Mode=TwoWay}" IsVisible="{Binding IsExpandable}" />
+                                </Panel>
+                                <Panel Width="20">
+                                    <PathIcon Width="14" Height="14" Data="{Binding LeftIconKind, Converter={x:Static conv:IconKindGeometryConverter.Instance}}"
+                                              Foreground="{Binding LeftIconKind, Converter={x:Static conv:IconKindBrushConverter.Instance}}"
+                                              IsVisible="{Binding LeftIconKind, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static vm:IconKind.None}}" />
+                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource DiffMarkerBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                             Margin="0,0,1,2" IsVisible="{Binding ShowDiffMarker}" />
+                                </Panel>
+                                <TextBlock Classes="sidetext" Text="{Binding LeftName}" Margin="4,0,0,0"
+                                           Foreground="{Binding LeftState, Converter={x:Static conv:SideStateBrushConverter.Instance}}"
+                                           FontWeight="{Binding LeftState, Converter={x:Static conv:SideStateWeightConverter.Instance}}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Size" Tag="LeftSize" Width="80" SortMemberPath="LeftSize">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RowViewModel">
+                            <TextBlock Classes="sidetext" Text="{Binding LeftSize}" HorizontalAlignment="Right"
+                                       Foreground="{Binding LeftState, Converter={x:Static conv:SideStateBrushConverter.Instance}}"
+                                       FontWeight="{Binding LeftState, Converter={x:Static conv:SideStateWeightConverter.Instance}}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Modified" Tag="LeftDate" Width="150" SortMemberPath="LeftDate">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RowViewModel">
+                            <TextBlock Classes="sidetext" Text="{Binding LeftDate}"
+                                       Foreground="{Binding LeftState, Converter={x:Static conv:SideStateBrushConverter.Instance}}"
+                                       FontWeight="{Binding LeftState, Converter={x:Static conv:SideStateWeightConverter.Instance}}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="" Tag="Status" Width="36" SortMemberPath="Status" CanUserResize="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RowViewModel">
+                            <TextBlock Text="{Binding Glyph}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"
+                                       Foreground="{DynamicResource GlyphBrush}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Right name" Tag="Name" Width="320" SortMemberPath="Name">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RowViewModel">
+                            <StackPanel Orientation="Horizontal" Margin="{Binding Indent}">
+                                <Panel Width="16" />
+                                <Panel Width="20">
+                                    <PathIcon Width="14" Height="14" Data="{Binding RightIconKind, Converter={x:Static conv:IconKindGeometryConverter.Instance}}"
+                                              Foreground="{Binding RightIconKind, Converter={x:Static conv:IconKindBrushConverter.Instance}}"
+                                              IsVisible="{Binding RightIconKind, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static vm:IconKind.None}}" />
+                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource DiffMarkerBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                             Margin="0,0,1,2" IsVisible="{Binding ShowDiffMarker}" />
+                                </Panel>
+                                <TextBlock Classes="sidetext" Text="{Binding RightName}" Margin="4,0,0,0"
+                                           Foreground="{Binding RightState, Converter={x:Static conv:SideStateBrushConverter.Instance}}"
+                                           FontWeight="{Binding RightState, Converter={x:Static conv:SideStateWeightConverter.Instance}}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Size" Tag="RightSize" Width="80" SortMemberPath="RightSize">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RowViewModel">
+                            <TextBlock Classes="sidetext" Text="{Binding RightSize}" HorizontalAlignment="Right"
+                                       Foreground="{Binding RightState, Converter={x:Static conv:SideStateBrushConverter.Instance}}"
+                                       FontWeight="{Binding RightState, Converter={x:Static conv:SideStateWeightConverter.Instance}}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Modified" Tag="RightDate" Width="150" SortMemberPath="RightDate">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RowViewModel">
+                            <TextBlock Classes="sidetext" Text="{Binding RightDate}"
+                                       Foreground="{Binding RightState, Converter={x:Static conv:SideStateBrushConverter.Instance}}"
+                                       FontWeight="{Binding RightState, Converter={x:Static conv:SideStateWeightConverter.Instance}}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>

@@ -212,8 +212,8 @@
                         <MenuItem Header="Right" Command="{Binding OpenContainingFolderCommand}" CommandParameter="Right" />
                     </MenuItem>
                     <MenuItem Header="Show in _Explorer">
-                        <MenuItem Header="Left" Command="{Binding ShowInExplorerCommand}" CommandParameter="Left" />
-                        <MenuItem Header="Right" Command="{Binding ShowInExplorerCommand}" CommandParameter="Right" />
+                        <MenuItem Header="Left" Command="{Binding ShowInFileManagerCommand}" CommandParameter="Left" />
+                        <MenuItem Header="Right" Command="{Binding ShowInFileManagerCommand}" CommandParameter="Right" />
                     </MenuItem>
                     <MenuItem Header="Copy full _path">
                         <MenuItem Header="Left" Command="{Binding CopyPathCommand}" CommandParameter="Left" />

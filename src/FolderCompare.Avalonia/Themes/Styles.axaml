@@ -1,0 +1,97 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Style Selector="Button.dialog">
+        <Setter Property="MinWidth" Value="80" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="Margin" Value="6,0,0,0" />
+    </Style>
+
+    <Style Selector="TextBlock.warning">
+        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <!-- Toolbars: flat buttons and toggles in a wrapping row. -->
+    <Style Selector="WrapPanel.toolbar > :is(Button), WrapPanel.toolbar > ToggleButton">
+        <Setter Property="Margin" Value="1,2" />
+        <Setter Property="Padding" Value="7,3" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- Checked filter toggles: a light fill, so the colored labels stay readable. -->
+    <Style Selector="WrapPanel.toolbar > ToggleButton:checked /template/ ContentPresenter#PART_ContentPresenter,
+                     WrapPanel.toolbar > ToggleButton:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ToggleCheckedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ToggleCheckedBorderBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource ToggleCheckedForegroundBrush}" />
+    </Style>
+    <Style Selector="WrapPanel.toolbar > TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="6,0,4,0" />
+    </Style>
+    <Style Selector="WrapPanel.toolbar > Separator, StackPanel.toolbar > Separator">
+        <Setter Property="Width" Value="1" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Margin" Value="5,0" />
+        <Setter Property="Background" Value="{DynamicResource SeparatorBrush}" />
+    </Style>
+    <Style Selector="WrapPanel.toolbar PathIcon">
+        <Setter Property="Width" Value="14" />
+        <Setter Property="Height" Value="14" />
+    </Style>
+
+    <!-- Status bar -->
+    <Style Selector="Border.statusbar">
+        <Setter Property="BorderBrush" Value="{DynamicResource SeparatorBrush}" />
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
+        <Setter Property="Padding" Value="6,3" />
+    </Style>
+    <Style Selector="Border.statusbar Separator">
+        <Setter Property="Width" Value="1" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="Margin" Value="8,0" />
+        <Setter Property="Background" Value="{DynamicResource SeparatorBrush}" />
+    </Style>
+
+    <!-- Small triangle used to expand/collapse folders. -->
+    <Style Selector="ToggleButton.expander">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="Transparent">
+                    <Path x:Name="Arrow" HorizontalAlignment="Center" VerticalAlignment="Center"
+                          Data="{StaticResource IconCollapsed}" Fill="{DynamicResource ExpanderArrowBrush}" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ToggleButton.expander:checked /template/ Path#Arrow">
+        <Setter Property="Data" Value="{StaticResource IconExpanded}" />
+    </Style>
+    <Style Selector="ToggleButton.expander:pointerover /template/ Path#Arrow">
+        <Setter Property="Fill" Value="{DynamicResource ExpanderArrowHoverBrush}" />
+    </Style>
+
+    <!-- Result grid: compact rows, no cell focus rectangle. -->
+    <Style Selector="DataGrid#ResultList DataGridCell">
+        <Setter Property="MinHeight" Value="20" />
+        <Setter Property="Padding" Value="4,0" />
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+    <Style Selector="DataGrid#ResultList DataGridCell:current /template/ Grid#FocusVisual">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="DataGrid#ResultList DataGridCell.status">
+        <Setter Property="Background" Value="{DynamicResource StatusColumnBackground}" />
+    </Style>
+    <Style Selector="DataGrid#ResultList DataGridColumnHeader">
+        <Setter Property="Padding" Value="6,2" />
+    </Style>
+    <Style Selector="TextBlock.sidetext">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+</Styles>

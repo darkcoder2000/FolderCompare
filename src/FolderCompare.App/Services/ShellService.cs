@@ -4,22 +4,19 @@ using System.Windows;
 
 namespace FolderCompare.App.Services;
 
-public interface IShellService
-{
-    void Open(string path);
-    void ShowInExplorer(string path);
-    void SetClipboardText(string text);
-}
-
 public sealed class ShellService : IShellService
 {
     public void Open(string path) => Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
 
-    public void ShowInExplorer(string path) =>
+    public void ShowInFileManager(string path) =>
         Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
 
-    public void SetClipboardText(string text) => Clipboard.SetText(text);
+    public Task SetClipboardTextAsync(string text)
+    {
+        Clipboard.SetText(text);
+        return Task.CompletedTask;
+    }
 
-    public static string LogDirectory =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FolderCompare", "logs");
+    public string FileManagerName => "Explorer";
+    public string TrashName => "Recycle Bin";
 }

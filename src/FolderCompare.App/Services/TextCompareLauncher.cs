@@ -7,24 +7,6 @@ using Microsoft.Extensions.Logging;
 
 namespace FolderCompare.App.Services;
 
-/// <summary>A file pair to open in the text compare window. A side that does not exist yet starts empty.</summary>
-public sealed record TextCompareRequest(
-    string LeftPath, bool LeftExists,
-    string RightPath, bool RightExists,
-    string Title,
-    Action? FileSaved);
-
-/// <summary>One side as loaded from disk.</summary>
-public sealed record TextSide(string Path, bool Exists, LoadedText Text, DateTime? LastWriteUtc);
-
-public interface ITextCompareLauncher
-{
-    void Open(TextCompareRequest request);
-
-    /// <summary>Asks every open compare window about unsaved changes. False when the user cancelled.</summary>
-    bool ConfirmCloseAll();
-}
-
 public sealed class TextCompareLauncher : ITextCompareLauncher
 {
     private const long LargeFileBytes = 20L * 1024 * 1024;
@@ -42,18 +24,26 @@ public sealed class TextCompareLauncher : ITextCompareLauncher
         _logger = logger;
     }
 
+    public Task OpenAsync(TextCompareRequest request)
+    {
+        Open(request);
+        return Task.CompletedTask;
+    }
+
+    public Task<bool> ConfirmCloseAllAsync() => Task.FromResult(ConfirmCloseAll());
+
     public void Open(TextCompareRequest request)
     {
         foreach (var (path, exists) in new[] { (request.LeftPath, request.LeftExists), (request.RightPath, request.RightExists) })
         {
             if (exists && _fs.FileInfo.New(path).Length > LargeFileBytes &&
-                !_dialogs.Confirm("Compare contents", $"{path}\n\nis larger than 20 MB. Comparing it may be slow. Continue?"))
+                !_dialogs.ConfirmAsync("Compare contents", $"{path}\n\nis larger than 20 MB. Comparing it may be slow. Continue?").GetAwaiter().GetResult())
                 return;
         }
 
         if (!TryLoad(request, out var left, out var right, out var error))
         {
-            _dialogs.ShowInfo("Compare contents", error);
+            _dialogs.ShowInfoAsync("Compare contents", error).GetAwaiter().GetResult(); // synchronous in WPF
             return;
         }
 

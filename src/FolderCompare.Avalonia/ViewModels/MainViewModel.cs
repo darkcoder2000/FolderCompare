@@ -3,8 +3,11 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Abstractions;
 using System.Text;
-using System.Windows;
+#if AVALONIA
+using Avalonia.Threading;
+#else
 using System.Windows.Threading;
+#endif
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -135,10 +138,10 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Browse(string side)
+    private async Task Browse(string side)
     {
         bool left = side == "Left";
-        var picked = _dialogs.PickFolder(left ? LeftPath : RightPath);
+        var picked = await _dialogs.PickFolderAsync(left ? LeftPath : RightPath);
         if (picked is null) return;
         if (left) LeftPath = picked;
         else RightPath = picked;
@@ -363,7 +366,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "Compare failed");
-            _dialogs.ShowError("Compare failed", ex.Message);
+            await _dialogs.ShowErrorAsync("Compare failed", ex.Message);
             StatusText = "Compare failed.";
         }
         finally
@@ -717,16 +720,16 @@ public sealed partial class MainViewModel : ObservableObject
     private Task CopyToLeftAsync() => CopyAsync(CopyDirection.RightToLeft);
 
     [RelayCommand(CanExecute = nameof(CanDeleteAny))]
-    private Task DeleteAsync()
+    private async Task DeleteAsync()
     {
         var nodes = SelectedNodes();
         Sides sides = Sides.Both;
         if (nodes.Any(n => n.ExistsLeft && n.ExistsRight))
         {
-            sides = _dialogs.AskDeleteSide();
-            if (sides == Sides.None) return Task.CompletedTask;
+            sides = await _dialogs.AskDeleteSideAsync();
+            if (sides == Sides.None) return;
         }
-        return DeleteSidesAsync(nodes, sides);
+        await DeleteSidesAsync(nodes, sides);
     }
 
     [RelayCommand(CanExecute = nameof(CanDeleteLeft))]
@@ -746,12 +749,12 @@ public sealed partial class MainViewModel : ObservableObject
         var title = direction == CopyDirection.LeftToRight ? "Copy to right" : "Copy to left";
         if (plan.Actions.Count == 0)
         {
-            _dialogs.ShowInfo(title, "Nothing to copy." + (plan.Notes.Count > 0 ? "\n\n" + string.Join("\n", plan.Notes) : ""));
+            await _dialogs.ShowInfoAsync(title, "Nothing to copy." + (plan.Notes.Count > 0 ? "\n\n" + string.Join("\n", plan.Notes) : ""));
             return;
         }
 
         if (plan.Actions.Count >= Settings.PreviewThreshold &&
-            !_dialogs.ShowPreview(new PreviewRequest(title, plan, IsDelete: false, Permanent: false, OfferDontAskAgain: false)).Confirmed)
+            !(await _dialogs.ShowPreviewAsync(new PreviewRequest(title, plan, IsDelete: false, Permanent: false, OfferDontAskAgain: false))).Confirmed)
             return;
 
         await ExecuteAsync(title, plan, nodes);
@@ -763,15 +766,15 @@ public sealed partial class MainViewModel : ObservableObject
         var plan = OperationPlanner.PlanDelete(_result, nodes, sides);
         if (plan.Actions.Count == 0)
         {
-            _dialogs.ShowInfo("Delete", "Nothing to delete on the chosen side.");
+            await _dialogs.ShowInfoAsync("Delete", "Nothing to delete on the chosen side.");
             return;
         }
 
         bool recycle = Settings.DeleteToRecycleBin;
         if (!recycle || Settings.ConfirmRecycleDelete)
         {
-            var title = recycle ? "Move to Recycle Bin" : "Delete permanently";
-            var answer = _dialogs.ShowPreview(new PreviewRequest(title, plan, IsDelete: true, Permanent: !recycle, OfferDontAskAgain: recycle));
+            var title = recycle ? $"Move to {_shell.TrashName}" : "Delete permanently";
+            var answer = await _dialogs.ShowPreviewAsync(new PreviewRequest(title, plan, IsDelete: true, Permanent: !recycle, OfferDontAskAgain: recycle));
             if (!answer.Confirmed) return;
             if (answer.DontAskAgain)
             {
@@ -779,7 +782,7 @@ public sealed partial class MainViewModel : ObservableObject
                 _settingsService.Save();
             }
         }
-        if (!recycle && !_dialogs.Confirm("Delete permanently",
+        if (!recycle && !await _dialogs.ConfirmAsync("Delete permanently",
                 $"Permanently delete {plan.Actions.Count:N0} item(s) ({RowViewModel.FormatSize(plan.TotalBytes)})?\n\nThis cannot be undone.", warning: true))
             return;
 
@@ -809,8 +812,8 @@ public sealed partial class MainViewModel : ObservableObject
             FileProgressValue = p.FileBytesTotal > 0 ? 100.0 * p.FileBytesDone / p.FileBytesTotal : 0;
             StatusText = $"{title}: {Math.Min(p.ItemsDone + 1, p.ItemsTotal):N0}/{p.ItemsTotal:N0}  {p.CurrentItem}";
         });
-        var dispatcher = Application.Current.Dispatcher;
-        OverwriteResolver resolver = (conflict, _) => dispatcher.InvokeAsync(() => _dialogs.AskOverwrite(conflict)).Task;
+        // The executor runs on a worker thread; the question is asked on the UI thread and the copy waits for the answer.
+        OverwriteResolver resolver = (conflict, _) => UiThread.InvokeAsync(() => _dialogs.AskOverwriteAsync(conflict));
 
         OperationSummary summary;
         try
@@ -833,7 +836,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "{Title} failed", title);
-            _dialogs.ShowError(title, ex.Message);
+            await _dialogs.ShowErrorAsync(title, ex.Message);
             return;
         }
         finally
@@ -844,7 +847,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         StatusText = $"{title}: {summary.Succeeded:N0} succeeded, {summary.Skipped:N0} skipped, {summary.Failed:N0} failed{(summary.Cancelled ? " (cancelled)" : "")}.";
-        _dialogs.ShowSummary(title, summary, plan.Notes);
+        await _dialogs.ShowSummaryAsync(title, summary, plan.Notes);
     }
 
     private async Task RefreshNodesAsync(DiffResult result, IReadOnlyCollection<(DiffNode Parent, string Name)> targets)
@@ -882,7 +885,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "Refresh failed");
-            _dialogs.ShowError("Refresh", ex.Message);
+            await _dialogs.ShowErrorAsync("Refresh", ex.Message);
         }
         finally
         {
@@ -896,7 +899,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (_result is null || _selected.Count != 1) return;
         var node = _selected.First().Node;
         if (node.Parent is null) return;
-        var answer = _dialogs.AskRename(new RenameRequest(node.Name, node.ExistsLeft, node.ExistsRight));
+        var answer = await _dialogs.AskRenameAsync(new RenameRequest(node.Name, node.ExistsLeft, node.ExistsRight));
         if (answer is null || string.Equals(answer.NewName, node.Name, StringComparison.Ordinal)) return;
 
         var options = new OperationOptions { LeftRoot = _result.LeftRoot, RightRoot = _result.RightRoot };
@@ -915,7 +918,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         await RefreshNodesAsync(_result, [(node.Parent, node.Name), (node.Parent, answer.NewName)]);
-        if (errors.Count > 0) _dialogs.ShowError("Rename", string.Join("\n", errors));
+        if (errors.Count > 0) await _dialogs.ShowErrorAsync("Rename", string.Join("\n", errors));
     }
 
     // ---- Text compare -----------------------------------------------------------------------
@@ -925,12 +928,12 @@ public sealed partial class MainViewModel : ObservableObject
         _selected.First().Node is { IsDirectory: false } node && (node.ExistsLeft || node.ExistsRight);
 
     [RelayCommand(CanExecute = nameof(CanCompareContents))]
-    private void CompareContents()
+    private async Task CompareContents()
     {
         if (!CanCompareContents()) return;
         var result = _result!;
         var node = _selected.First().Node;
-        _textCompare.Open(new TextCompareRequest(
+        await _textCompare.OpenAsync(new TextCompareRequest(
             Path.Join(result.RootFor(Side.Left), node.RelativePath), node.ExistsLeft,
             Path.Join(result.RootFor(Side.Right), node.RelativePath), node.ExistsRight,
             node.RelativePath,
@@ -954,7 +957,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    public bool ConfirmCloseTextCompares() => _textCompare.ConfirmCloseAll();
+    public Task<bool> ConfirmCloseTextComparesAsync() => _textCompare.ConfirmCloseAllAsync();
 
     // ---- Shell integration ------------------------------------------------------------------
 
@@ -967,16 +970,19 @@ public sealed partial class MainViewModel : ObservableObject
         return Path.Join(_result.RootFor(s), node.RelativePath);
     }
 
-    [RelayCommand]
-    private void Open(string side) => Shell(side, p => _shell.Open(p));
+    /// <summary>"Explorer", "Finder" or "File Manager", for the "Show in ..." menu.</summary>
+    public string FileManagerName => _shell.FileManagerName;
 
     [RelayCommand]
-    private void OpenContainingFolder(string side) => Shell(side, p => _shell.Open(Path.GetDirectoryName(p)!));
+    private Task Open(string side) => Shell(side, p => _shell.Open(p));
 
     [RelayCommand]
-    private void ShowInExplorer(string side) => Shell(side, p => _shell.ShowInExplorer(p));
+    private Task OpenContainingFolder(string side) => Shell(side, p => _shell.Open(Path.GetDirectoryName(p)!));
 
-    private void Shell(string side, Action<string> action)
+    [RelayCommand]
+    private Task ShowInFileManager(string side) => Shell(side, p => _shell.ShowInFileManager(p));
+
+    private async Task Shell(string side, Action<string> action)
     {
         var path = PathOf(side);
         if (path is null) return;
@@ -986,12 +992,12 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _dialogs.ShowError("Open", ex.Message);
+            await _dialogs.ShowErrorAsync("Open", ex.Message);
         }
     }
 
     [RelayCommand]
-    private void CopyPath(string which)
+    private async Task CopyPath(string which)
     {
         if (_result is null || _selected.Count == 0) return;
         var lines = new List<string>();
@@ -1003,16 +1009,19 @@ public sealed partial class MainViewModel : ObservableObject
         if (lines.Count == 0) return;
         try
         {
-            _shell.SetClipboardText(string.Join(Environment.NewLine, lines));
+            await _shell.SetClipboardTextAsync(string.Join(Environment.NewLine, lines));
         }
         catch (Exception ex)
         {
-            _dialogs.ShowError("Copy path", ex.Message);
+            await _dialogs.ShowErrorAsync("Copy path", ex.Message);
         }
     }
 
     /// <summary>Tools menu checkbox: the "Select as left" / "Compare to left" entries in the Explorer context menu.</summary>
     [ObservableProperty] private bool _explorerIntegration;
+
+    /// <summary>Only Windows has the Explorer context menu; the menu item is hidden elsewhere.</summary>
+    public bool ExplorerIntegrationSupported => _explorer.IsSupported;
 
     partial void OnExplorerIntegrationChanged(bool value)
     {
@@ -1024,32 +1033,32 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "Could not change the Explorer context menu integration");
-            _dialogs.ShowError("Explorer context menu", ex.Message);
-            Dispatcher.CurrentDispatcher.BeginInvoke(() => ExplorerIntegration = _explorer.IsRegistered);
+            _ = _dialogs.ShowErrorAsync("Explorer context menu", ex.Message);
+            UiThread.Post(() => ExplorerIntegration = _explorer.IsRegistered);
         }
     }
 
     [RelayCommand]
-    private void OpenLogFolder()
+    private async Task OpenLogFolder()
     {
         try
         {
-            Directory.CreateDirectory(ShellService.LogDirectory);
-            _shell.Open(ShellService.LogDirectory);
+            Directory.CreateDirectory(AppPaths.LogDirectory);
+            _shell.Open(AppPaths.LogDirectory);
         }
         catch (Exception ex)
         {
-            _dialogs.ShowError("Open log folder", ex.Message);
+            await _dialogs.ShowErrorAsync("Open log folder", ex.Message);
         }
     }
 
     // ---- Report ----------------------------------------------------------------------------
 
     [RelayCommand(CanExecute = nameof(CanExport))]
-    private void ExportReport()
+    private async Task ExportReport()
     {
         if (_result is null) return;
-        var path = _dialogs.PickSaveFile("FolderCompare report.csv", "CSV file (*.csv)|*.csv|Text file (*.txt)|*.txt");
+        var path = await _dialogs.PickSaveFileAsync("FolderCompare report.csv", [new("CSV file", "csv"), new("Text file", "txt")]);
         if (path is null) return;
 
         // The current filter, independent of which folders are expanded.
@@ -1063,17 +1072,17 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _dialogs.ShowError("Export report", ex.Message);
+            await _dialogs.ShowErrorAsync("Export report", ex.Message);
         }
     }
 
     // ---- Settings & profiles -----------------------------------------------------------------
 
     [RelayCommand]
-    private void OpenSettings()
+    private async Task OpenSettings()
     {
         SaveSettings();
-        var edited = _dialogs.EditSettings(Settings);
+        var edited = await _dialogs.EditSettingsAsync(Settings);
         if (edited is null) return;
         _settingsService.Replace(edited);
         _suppressFilterRebuild = true;
@@ -1085,9 +1094,9 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void SaveProfile()
+    private async Task SaveProfile()
     {
-        var name = _dialogs.AskText("Save profile", "Profile name:", SelectedProfile?.Name ?? "");
+        var name = await _dialogs.AskTextAsync("Save profile", "Profile name:", SelectedProfile?.Name ?? "");
         if (string.IsNullOrWhiteSpace(name)) return;
         var profile = new Profile
         {
@@ -1106,7 +1115,7 @@ public sealed partial class MainViewModel : ObservableObject
         var existing = Profiles.FirstOrDefault(p => string.Equals(p.Name, profile.Name, StringComparison.OrdinalIgnoreCase));
         if (existing is not null)
         {
-            if (!_dialogs.Confirm("Save profile", $"Replace the existing profile '{existing.Name}'?")) return;
+            if (!await _dialogs.ConfirmAsync("Save profile", $"Replace the existing profile '{existing.Name}'?")) return;
             Profiles[Profiles.IndexOf(existing)] = profile;
         }
         else
@@ -1120,10 +1129,10 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void DeleteProfile()
+    private async Task DeleteProfile()
     {
         if (SelectedProfile is null) return;
-        if (!_dialogs.Confirm("Delete profile", $"Delete the profile '{SelectedProfile.Name}'?")) return;
+        if (!await _dialogs.ConfirmAsync("Delete profile", $"Delete the profile '{SelectedProfile.Name}'?")) return;
         Profiles.Remove(SelectedProfile);
         SelectedProfile = null;
         SaveSettings();

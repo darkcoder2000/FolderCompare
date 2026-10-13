@@ -1,0 +1,15 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FolderCompare.App.Views.DeleteSideDialog"
+        Title="Delete" SizeToContent="WidthAndHeight" CanResize="False"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Icon="/Assets/app.ico">
+    <StackPanel Margin="14">
+        <TextBlock Text="Some selected items exist on both sides. Which side should be deleted?" Margin="0,0,0,12" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="_Left" Classes="dialog" Click="Left_Click" />
+            <Button Content="_Right" Classes="dialog" Click="Right_Click" />
+            <Button Content="_Both" Classes="dialog" Click="Both_Click" />
+            <Button x:Name="CancelButton" Content="_Cancel" Classes="dialog" IsCancel="True" IsDefault="True" Click="Cancel_Click" />
+        </StackPanel>
+    </StackPanel>
+</Window>

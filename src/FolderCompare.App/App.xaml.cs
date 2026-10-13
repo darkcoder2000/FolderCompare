@@ -23,7 +23,7 @@ public partial class App : Application
 
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
-            .WriteTo.File(Path.Combine(ShellService.LogDirectory, "foldercompare-.log"),
+            .WriteTo.File(Path.Combine(AppPaths.LogDirectory, "foldercompare-.log"),
                           rollingInterval: RollingInterval.Day,
                           retainedFileCountLimit: 14)
             .CreateLogger();
@@ -46,7 +46,8 @@ public partial class App : Application
         services.AddSingleton<SettingsService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IShellService, ShellService>();
-        services.AddSingleton<ITextCompareLauncher, TextCompareLauncher>();
+        services.AddSingleton<TextCompareLauncher>();
+        services.AddSingleton<ITextCompareLauncher>(sp => sp.GetRequiredService<TextCompareLauncher>());
         services.AddSingleton<IExplorerIntegrationService, ExplorerIntegrationService>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
@@ -87,7 +88,7 @@ public partial class App : Application
         var leftName = Path.GetFileName(left);
         var rightName = Path.GetFileName(right);
         var title = string.Equals(leftName, rightName, StringComparison.OrdinalIgnoreCase) ? rightName : $"{leftName} / {rightName}";
-        _services!.GetRequiredService<ITextCompareLauncher>().Open(new TextCompareRequest(left, true, right, true, title, null));
+        _services!.GetRequiredService<TextCompareLauncher>().Open(new TextCompareRequest(left, true, right, true, title, null));
         if (Windows.Count == 0) Shutdown(0);
     }
 
@@ -103,7 +104,7 @@ public partial class App : Application
     {
         Log.Error(e.Exception, "Unhandled UI exception");
         MessageBox.Show(
-            $"Something went wrong:\n\n{e.Exception.Message}\n\nThe details were written to the log folder:\n{ShellService.LogDirectory}",
+            $"Something went wrong:\n\n{e.Exception.Message}\n\nThe details were written to the log folder:\n{AppPaths.LogDirectory}",
             "FolderCompare", MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
     }

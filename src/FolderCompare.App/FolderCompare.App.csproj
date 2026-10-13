@@ -54,4 +54,15 @@
     <ProjectReference Include="..\FolderCompare.Core\FolderCompare.Core.csproj" />
   </ItemGroup>
 
+  <!-- View models, settings and service interfaces are shared with the Avalonia app (which owns the files). -->
+  <PropertyGroup>
+    <SharedDir>..\FolderCompare.Avalonia\</SharedDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(SharedDir)ViewModels\MainViewModel.cs;$(SharedDir)ViewModels\RowViewModel.cs;$(SharedDir)ViewModels\RangeObservableCollection.cs"
+             Link="Shared\ViewModels\%(Filename)%(Extension)" />
+    <Compile Include="$(SharedDir)Services\AppSettings.cs;$(SharedDir)Services\SettingsService.cs;$(SharedDir)Services\CommandLineOptions.cs;$(SharedDir)Services\IDialogService.cs;$(SharedDir)Services\IShellService.cs;$(SharedDir)Services\ITextCompareLauncher.cs;$(SharedDir)Services\ExplorerIntegrationService.cs;$(SharedDir)Services\UiThread.cs"
+             Link="Shared\Services\%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

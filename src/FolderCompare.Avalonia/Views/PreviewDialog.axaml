@@ -1,0 +1,42 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:FolderCompare.App.Views"
+        x:Class="FolderCompare.App.Views.PreviewDialog"
+        x:DataType="views:PreviewDialog"
+        Title="Preview" Width="900" Height="520" MinWidth="500" MinHeight="300"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Icon="/Assets/app.ico">
+    <DockPanel Margin="10">
+        <TextBlock x:Name="HeaderText" DockPanel.Dock="Top" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,6" TextWrapping="Wrap" />
+        <Border x:Name="WarningBar" DockPanel.Dock="Top" Background="{DynamicResource WarningBarBackground}" Padding="8,4" Margin="0,0,0,6" IsVisible="False">
+            <TextBlock x:Name="WarningText" Foreground="{DynamicResource ErrorBrush}" FontWeight="SemiBold" TextWrapping="Wrap" />
+        </Border>
+
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="OkButton" Content="_OK" IsDefault="True" Classes="dialog" Click="Ok_Click" />
+                <Button Content="_Cancel" IsCancel="True" Classes="dialog" Click="Cancel_Click" />
+            </StackPanel>
+            <CheckBox x:Name="DontAskAgain" Content="_Don't ask again for Recycle Bin deletes" VerticalAlignment="Center" IsVisible="False" />
+        </DockPanel>
+
+        <TextBlock x:Name="NotesText" DockPanel.Dock="Bottom" Foreground="{DynamicResource OlderBrush}" TextWrapping="Wrap" Margin="0,6,0,0" IsVisible="False" />
+
+        <DataGrid x:Name="ActionsGrid" IsReadOnly="True" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                  SelectionMode="Extended" CanUserSortColumns="False" x:DataType="views:PreviewRow">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Action" Binding="{Binding Action}" Width="110" />
+                <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="*" />
+                <DataGridTextColumn Header="Destination" Binding="{Binding Target}" Width="*" />
+                <DataGridTextColumn Header="Size" Binding="{Binding Size}" Width="80" />
+                <DataGridTemplateColumn Header="Overwrite" Width="170">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="views:PreviewRow">
+                            <TextBlock Text="{Binding Overwrite}" VerticalAlignment="Center" Margin="12,0"
+                                       Classes.warning="{Binding IsWarning}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>

@@ -1,5 +1,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
@@ -9,6 +10,8 @@ namespace FolderCompare.App.Services;
 
 public interface IExplorerIntegrationService
 {
+    /// <summary>False on Linux and macOS: there is no Explorer context menu to integrate with.</summary>
+    bool IsSupported { get; }
     bool IsRegistered { get; }
     void Register();
     void Unregister();
@@ -21,6 +24,7 @@ public interface IExplorerIntegrationService
 /// Adds the "Compare" / "Select as left" entries to the Explorer context menu (per user, HKCU). The entries are
 /// handled by FolderCompare.ShellExt.dll, which is embedded in the exe and extracted to %LOCALAPPDATA%.
 /// </summary>
+[SupportedOSPlatform("windows")]
 public sealed class ExplorerIntegrationService : IExplorerIntegrationService
 {
     private const int SHCNE_ASSOCCHANGED = 0x08000000;
@@ -33,6 +37,8 @@ public sealed class ExplorerIntegrationService : IExplorerIntegrationService
     private byte[]? _dll;
 
     public ExplorerIntegrationService(ILogger<ExplorerIntegrationService> logger) => _logger = logger;
+
+    public bool IsSupported => true;
 
     private static string ExePath => Environment.ProcessPath ?? throw new InvalidOperationException("Unknown executable path.");
 
@@ -186,4 +192,14 @@ public sealed class ExplorerIntegrationService : IExplorerIntegrationService
 
     [DllImport("shell32.dll")]
     private static extern void SHChangeNotify(int wEventId, uint uFlags, IntPtr dwItem1, IntPtr dwItem2);
+}
+
+/// <summary>Used on Linux and macOS.</summary>
+public sealed class NoExplorerIntegration : IExplorerIntegrationService
+{
+    public bool IsSupported => false;
+    public bool IsRegistered => false;
+    public void Register() => throw new PlatformNotSupportedException("The Explorer context menu exists only on Windows.");
+    public void Unregister() { }
+    public void EnsureCurrentPath() { }
 }

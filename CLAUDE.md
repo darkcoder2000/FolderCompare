@@ -4,6 +4,10 @@ See README.md for features, shortcuts and layout. This file holds working knowle
 
 ## Build & test
 - .NET 10 SDK (all projects target `net10.0` / `net10.0-windows`).
+- Two UI projects during the Avalonia port (branch `avalonia-port`, see `PLAN-avalonia-cross-platform-port.md`):
+  - `src/FolderCompare.App` – WPF, Windows only, the released app until the port reaches parity.
+  - `src/FolderCompare.Avalonia` – Avalonia 12 (Windows, Linux, macOS), will replace it and then be renamed.
+    Run it with `dotnet run --project src/FolderCompare.Avalonia [-- "left" "right" --compare]`.
 - `dotnet build`, `dotnet test` (xUnit, all tests must pass before committing). Core tests must also pass on Linux
   (see `CLAUDE.local.md` for the local WSL setup).
 - Release exe: `dotnet publish src/FolderCompare.App -c Release -o publish` → single-file self-contained
@@ -20,9 +24,23 @@ See README.md for features, shortcuts and layout. This file holds working knowle
   - Tests are written with Windows paths wrapped in `TestFs.P(...)`, which maps them to `/...` on Unix.
   - "Hidden & system" on Unix = dotfiles (that's how .NET maps attributes there).
 - App is MVVM (CommunityToolkit.Mvvm, `[ObservableProperty]` / `[RelayCommand]`), services registered via DI in
-  `App.xaml.cs`. After changing state that affects a command, update `RefreshCommandStates` in `MainViewModel`.
-- Colors live only in `Themes/Colors.xaml` (prepared for a later dark theme), never hard-coded in XAML/C#.
-- Settings: `AppSettings` → `%APPDATA%\FolderCompare\settings.json`; keep new properties backward compatible (defaults).
+  `App.xaml.cs` / `App.axaml.cs`. After changing state that affects a command, update `RefreshCommandStates` in `MainViewModel`.
+- Shared code: `MainViewModel`, `RowViewModel`, `AppSettings`, `SettingsService`, `CommandLineOptions`, the service
+  interfaces (`IDialogService`, `IShellService`, `ITextCompareLauncher`), `ExplorerIntegrationService` and `UiThread`
+  live in `src/FolderCompare.Avalonia` and are **linked** (not copied) into the WPF project (see its csproj). They must
+  compile for both; framework-specific bits use `#if AVALONIA` (defined only in the Avalonia project). Views,
+  dialogs, `DialogService`, `ShellService`, `TextCompareLauncher` and the text compare window exist once per UI.
+- `IDialogService` is async (Avalonia dialogs are): always `await` it before acting on the answer. The WPF
+  implementation wraps its synchronous dialogs in completed tasks.
+- Avalonia UI: colors only in `Themes/Colors.axaml` (`ThemeDictionaries`, Light only so far), never hard-coded in
+  AXAML/C# – converters and `DiffColors` look keys up there. Icons are geometries in `Themes/Icons.axaml` (Fluent UI
+  System Icons, MIT; no Segoe MDL2). Monospace text uses the `MonoFont` resource. Ctrl shortcuts are Cmd on macOS
+  (`_command` in the windows); show them via code-set `InputGesture`/tooltips. The result list is a `DataGrid`
+  whose `Sorting` is cancelled and forwarded to `MainViewModel.SortBy` (the tree sorts, not the grid).
+- WPF UI: colors only in `Themes/Colors.xaml`, never hard-coded in XAML/C#.
+- Settings: `AppSettings` → `settings.json` in `%APPDATA%\FolderCompare` (Windows), `~/.config/FolderCompare` (Linux),
+  `~/Library/Application Support/FolderCompare` (macOS); both UIs share the file. Window bounds are stored in
+  device-independent pixels. Keep new properties backward compatible (defaults).
 
 ## Safety invariants (do not weaken)
 - Scanning never writes. Every copy/delete target must be checked to be strictly inside its root after `GetFullPath`.
@@ -34,15 +52,21 @@ See README.md for features, shortcuts and layout. This file holds working knowle
 - Delete goes to the Recycle Bin by default; overwriting a newer file always asks.
 - Log every file operation (Serilog).
 
-## Text compare (src/FolderCompare.Core/TextDiff, src/FolderCompare.App/Views/TextCompare)
-- Diff: own Myers implementation (`MyersDiff`, `LineDiffer`, `InlineDiffer`), AvalonEdit only for display/editing.
+## Text compare (src/FolderCompare.Core/TextDiff, src/FolderCompare.*/Views/TextCompare)
+- Diff: own Myers implementation (`MyersDiff`, `LineDiffer`, `InlineDiffer`), AvalonEdit (WPF) / AvaloniaEdit
+  (Avalonia, same class structure: `VisualLineElementGenerator`, `IBackgroundRenderer`, `TextView`) only for
+  display/editing.
 - Pane alignment relies on **every visual row being exactly one line height**: filler rows come from
   `FillerElementGenerator` (zero-length element with a custom height). Don't enable word wrap or variable line heights
   without reworking scroll sync, `DiffMargins` and `DiffBackgroundRenderer`.
 - Block copies are computed by `BlockCopy` (tested on strings) and applied inside `BeginUpdate/EndUpdate` so each
   copy is one undo step.
 - `TextFileCodec` must round-trip encoding, BOM and line endings unchanged.
-- Name clashes seen before: `TextRange` (WPF vs. Core – use an alias), `Window.RestoreBounds`.
+- AvaloniaEdit filler rows are a zero-width `DrawableTextRun` (`Size` = rows × `DefaultLineHeight`, `Baseline` shifted by
+  the rows above). Scroll sync uses `TextView.ScrollOffsetChanged` with a reentrancy flag (`_syncingScroll`). Unsaved-change
+  prompts are async, so `Closing` cancels first and closes again after the answer.
+- Name clashes seen before: `TextRange` (WPF/Avalonia vs. Core – use an alias), `Window.RestoreBounds`,
+  `LogicalDirection` (AvaloniaEdit vs. Avalonia.Media.TextFormatting).
 
 ## Explorer context menu (src/FolderCompare.ShellExt)
 - Native C++ `IExplorerCommand` DLL (WRL, x64, static CRT), built by `build.ps1` with the MSVC Build Tools from an

@@ -1,0 +1,45 @@
+<!--
+  All colors of the app. Never hard-code colors in AXAML or C#; add a brush here instead.
+  Only the Light variant exists so far; a Dark dictionary with the same keys enables the dark theme.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+            <!-- Comparison colors. Change these to restyle the result grid. -->
+            <SolidColorBrush x:Key="NewerBrush" Color="#1B7F2A" />
+            <SolidColorBrush x:Key="OlderBrush" Color="#7A7A7A" />
+            <SolidColorBrush x:Key="OnlyBrush" Color="#1F5FBF" />
+            <SolidColorBrush x:Key="ErrorBrush" Color="#C42B1C" />
+            <SolidColorBrush x:Key="ConflictBrush" Color="#B35C00" />
+            <SolidColorBrush x:Key="DiffMarkerBrush" Color="#E07B00" />
+            <SolidColorBrush x:Key="FolderIconBrush" Color="#C99400" />
+            <SolidColorBrush x:Key="FileIconBrush" Color="#6B6B6B" />
+            <SolidColorBrush x:Key="GlyphBrush" Color="#444444" />
+            <SolidColorBrush x:Key="MessageBarBackground" Color="#FDE7E9" />
+            <SolidColorBrush x:Key="WarningBarBackground" Color="#FFF4CE" />
+            <SolidColorBrush x:Key="StatusColumnBackground" Color="#F3F3F3" />
+            <SolidColorBrush x:Key="ExpanderArrowBrush" Color="#707070" />
+            <SolidColorBrush x:Key="ExpanderArrowHoverBrush" Color="#1F5FBF" />
+            <SolidColorBrush x:Key="SeparatorBrush" Color="#D0D0D0" />
+            <SolidColorBrush x:Key="HintTextBrush" Color="#6B6B6B" />
+            <SolidColorBrush x:Key="ToggleCheckedBrush" Color="#CCE4F7" />
+            <SolidColorBrush x:Key="ToggleCheckedBorderBrush" Color="#5A9BD5" />
+            <SolidColorBrush x:Key="ToggleCheckedForegroundBrush" Color="#1A1A1A" />
+
+            <!-- Text compare window -->
+            <SolidColorBrush x:Key="TextDiffChangedLineBrush" Color="#FFE6E6" />
+            <SolidColorBrush x:Key="TextDiffChangedTextBrush" Color="#FFAAAA" />
+            <SolidColorBrush x:Key="TextDiffUnimportantLineBrush" Color="#E6EEFF" />
+            <SolidColorBrush x:Key="TextDiffUnimportantTextBrush" Color="#B8CFFF" />
+            <SolidColorBrush x:Key="TextDiffFillerBrush" Color="#F2F2F2" />
+            <SolidColorBrush x:Key="TextDiffFillerHatchBrush" Color="#DDDDDD" />
+            <SolidColorBrush x:Key="TextDiffCurrentSectionBrush" Color="#E07B00" />
+            <SolidColorBrush x:Key="TextDiffLineNumberBrush" Color="#8A8A8A" />
+            <SolidColorBrush x:Key="TextDiffCenterStripBrush" Color="#F4F4F4" />
+            <SolidColorBrush x:Key="TextDiffOverviewBrush" Color="#FAFAFA" />
+            <SolidColorBrush x:Key="TextDiffViewportBorderBrush" Color="#B0404040" />
+            <SolidColorBrush x:Key="TextDiffViewportFillBrush" Color="#22404040" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

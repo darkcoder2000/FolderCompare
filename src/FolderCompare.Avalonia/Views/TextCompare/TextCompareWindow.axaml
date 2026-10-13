@@ -1,0 +1,142 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ae="https://github.com/avaloniaui/avaloniaedit"
+        xmlns:local="clr-namespace:FolderCompare.App.Views.TextCompare"
+        x:Class="FolderCompare.App.Views.TextCompare.TextCompareWindow"
+        Title="Text compare" Width="1200" Height="800" MinWidth="600" MinHeight="300" Icon="/Assets/app.ico">
+    <Window.Styles>
+        <Style Selector="Border.paneheader">
+            <Setter Property="Background" Value="{DynamicResource StatusColumnBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SeparatorBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="6,3" />
+            <Setter Property="MinHeight" Value="24" />
+        </Style>
+        <Style Selector="ae|TextEditor">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="ShowLineNumbers" Value="True" />
+            <Setter Property="WordWrap" Value="False" />
+            <Setter Property="LineNumbersForeground" Value="{DynamicResource TextDiffLineNumberBrush}" />
+            <Setter Property="HorizontalScrollBarVisibility" Value="Visible" />
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+        </Style>
+        <Style Selector="TextBlock.details">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="Button > StackPanel > TextBlock, ToggleButton > TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem x:Name="SaveFocusedMenu" Header="_Save focused side" Click="SaveFocused_Click" />
+                <MenuItem x:Name="SaveLeftMenu" Header="Save _left" Click="SaveLeft_Click" />
+                <MenuItem x:Name="SaveRightMenu" Header="Save _right" Click="SaveRight_Click" />
+                <MenuItem x:Name="SaveAllMenu" Header="Save _all" Click="SaveAll_Click" />
+                <Separator />
+                <MenuItem Header="Re_load files" InputGesture="F5" Click="Reload_Click" />
+                <Separator />
+                <MenuItem Header="_Close" InputGesture="Escape" Click="Close_Click" />
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem x:Name="UndoMenu" Header="_Undo" Click="Undo_Click" />
+                <MenuItem x:Name="RedoMenu" Header="_Redo" Click="Redo_Click" />
+                <Separator />
+                <MenuItem x:Name="CopyRightMenu" Header="Copy to _Right →" Click="CopyToRight_Click" />
+                <MenuItem x:Name="CopyLeftMenu" Header="← Copy to _Left" Click="CopyToLeft_Click" />
+            </MenuItem>
+            <MenuItem Header="_Search">
+                <MenuItem x:Name="NextMenu" Header="_Next difference" Click="NextDiff_Click" />
+                <MenuItem x:Name="PrevMenu" Header="_Previous difference" Click="PrevDiff_Click" />
+                <MenuItem Header="_First difference" Click="FirstDiff_Click" />
+                <MenuItem Header="_Last difference" Click="LastDiff_Click" />
+            </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem x:Name="IgnoreWhitespaceMenu" Header="Ignore _whitespace differences" ToggleType="CheckBox" Click="Options_Changed" />
+                <MenuItem x:Name="IgnoreCaseMenu" Header="Ignore _case differences" ToggleType="CheckBox" Click="Options_Changed" />
+                <Separator />
+                <MenuItem x:Name="ShowWhitespaceMenu" Header="_Visible whitespace" ToggleType="CheckBox" Click="ShowWhitespace_Changed" />
+            </MenuItem>
+        </Menu>
+
+        <WrapPanel DockPanel.Dock="Top" Classes="toolbar" Margin="4,2">
+            <Button x:Name="SaveButton" Click="SaveFocused_Click">
+                <StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Data="{StaticResource IconSave}" /><TextBlock Text="Save" /></StackPanel>
+            </Button>
+            <Separator />
+            <Button x:Name="UndoButton" Click="Undo_Click">
+                <StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Data="{StaticResource IconUndo}" /><TextBlock Text="Undo" /></StackPanel>
+            </Button>
+            <Button x:Name="RedoButton" Click="Redo_Click">
+                <StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Data="{StaticResource IconRedo}" /><TextBlock Text="Redo" /></StackPanel>
+            </Button>
+            <Separator />
+            <Button x:Name="PrevButton" Click="PrevDiff_Click">
+                <StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Data="{StaticResource IconArrowUp}" /><TextBlock Text="Prev" /></StackPanel>
+            </Button>
+            <Button x:Name="NextButton" Click="NextDiff_Click">
+                <StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Data="{StaticResource IconArrowDown}" /><TextBlock Text="Next" /></StackPanel>
+            </Button>
+            <Separator />
+            <Button x:Name="CopyRightButton" Click="CopyToRight_Click" Content="Copy →" />
+            <Button x:Name="CopyLeftButton" Click="CopyToLeft_Click" Content="← Copy" />
+            <Separator />
+            <ToggleButton x:Name="IgnoreWhitespaceToggle" Click="Options_Changed" ToolTip.Tip="Treat whitespace-only differences as unimportant (blue)">
+                <TextBlock Text="Ignore whitespace" />
+            </ToggleButton>
+            <ToggleButton x:Name="IgnoreCaseToggle" Click="Options_Changed" ToolTip.Tip="Treat case-only differences as unimportant (blue)">
+                <TextBlock Text="Ignore case" />
+            </ToggleButton>
+            <Separator />
+            <Button Click="Reload_Click" ToolTip.Tip="Reload both files from disk (F5)">
+                <StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Data="{StaticResource IconReload}" /><TextBlock Text="Reload" /></StackPanel>
+            </Button>
+        </WrapPanel>
+
+        <Border DockPanel.Dock="Bottom" Classes="statusbar">
+            <DockPanel>
+                <TextBlock x:Name="CaretText" DockPanel.Dock="Right" VerticalAlignment="Center" />
+                <TextBlock x:Name="DiffCountText" DockPanel.Dock="Left" VerticalAlignment="Center" />
+                <Separator DockPanel.Dock="Left" />
+                <TextBlock x:Name="SectionText" VerticalAlignment="Center" />
+            </DockPanel>
+        </Border>
+
+        <!-- Line details: the current line of both sides, one above the other -->
+        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource SeparatorBrush}" BorderThickness="0,1,0,0" Padding="4,3">
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                <TextBlock Classes="details" Text="L " Foreground="{DynamicResource TextDiffLineNumberBrush}" />
+                <TextBlock Classes="details" Grid.Row="1" Text="R " Foreground="{DynamicResource TextDiffLineNumberBrush}" />
+                <TextBlock Classes="details" x:Name="LeftDetails" Grid.Column="1" />
+                <TextBlock Classes="details" x:Name="RightDetails" Grid.Column="1" Grid.Row="1" />
+            </Grid>
+        </Border>
+
+        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,*">
+            <Border Grid.Column="1" Classes="paneheader">
+                <DockPanel>
+                    <TextBlock x:Name="LeftFormat" DockPanel.Dock="Right" Foreground="{DynamicResource HintTextBrush}" Margin="8,0,0,0" />
+                    <TextBlock x:Name="LeftHeader" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+            </Border>
+            <Border Grid.Column="3" Classes="paneheader">
+                <DockPanel>
+                    <TextBlock x:Name="RightFormat" DockPanel.Dock="Right" Foreground="{DynamicResource HintTextBrush}" Margin="8,0,0,0" />
+                    <TextBlock x:Name="RightHeader" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+            </Border>
+            <Border Grid.Column="0" Classes="paneheader" />
+            <Border Grid.Column="2" Classes="paneheader" />
+
+            <local:DiffOverviewBar x:Name="Overview" Grid.Row="1" Grid.Column="0" />
+            <ae:TextEditor x:Name="LeftEditor" Grid.Row="1" Grid.Column="1" />
+            <local:DiffCenterStrip x:Name="CenterStrip" Grid.Row="1" Grid.Column="2" />
+            <ae:TextEditor x:Name="RightEditor" Grid.Row="1" Grid.Column="3" />
+        </Grid>
+    </DockPanel>
+</Window>

@@ -18,6 +18,32 @@ public sealed class DialogService : IDialogService
         return dialog.ShowDialog();
     }
 
+    public Task<string?> PickFolderAsync(string? initialPath) => Task.FromResult(PickFolder(initialPath));
+    public Task<string?> PickSaveFileAsync(string defaultName, IReadOnlyList<FileType> types) =>
+        Task.FromResult(PickSaveFile(defaultName, string.Join("|", types.Select(t => $"{t.Name} (*.{t.Extension})|*.{t.Extension}"))));
+    public Task<PreviewResult> ShowPreviewAsync(PreviewRequest request) => Task.FromResult(ShowPreview(request));
+    public Task<OverwriteDecision> AskOverwriteAsync(OverwriteConflict conflict) => Task.FromResult(AskOverwrite(conflict));
+    public Task ShowSummaryAsync(string title, OperationSummary summary, IReadOnlyList<string> notes)
+    {
+        ShowSummary(title, summary, notes);
+        return Task.CompletedTask;
+    }
+    public Task<Sides> AskDeleteSideAsync() => Task.FromResult(AskDeleteSide());
+    public Task<RenameResult?> AskRenameAsync(RenameRequest request) => Task.FromResult(AskRename(request));
+    public Task<string?> AskTextAsync(string title, string prompt, string initial) => Task.FromResult(AskText(title, prompt, initial));
+    public Task<AppSettings?> EditSettingsAsync(AppSettings current) => Task.FromResult(EditSettings(current));
+    public Task<bool> ConfirmAsync(string title, string message, bool warning = false) => Task.FromResult(Confirm(title, message, warning));
+    public Task ShowInfoAsync(string title, string message)
+    {
+        ShowInfo(title, message);
+        return Task.CompletedTask;
+    }
+    public Task ShowErrorAsync(string title, string message)
+    {
+        ShowError(title, message);
+        return Task.CompletedTask;
+    }
+
     public string? PickFolder(string? initialPath)
     {
         var dialog = new OpenFolderDialog { Title = "Choose a folder" };
