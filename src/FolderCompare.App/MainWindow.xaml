@@ -63,7 +63,7 @@
                       PreviewDragOver="PathBox_PreviewDragOver" PreviewDrop="PathBox_PreviewDrop" Padding="4,3" />
             <Button Grid.Column="1" Content="..." Width="30" Margin="3,0,0,0" ToolTip="Browse for the left folder"
                     Command="{Binding BrowseCommand}" CommandParameter="Left" />
-            <Button Grid.Column="2" Content="&#x21C4;" Width="34" Margin="8,0" FontSize="14" ToolTip="Swap left and right"
+            <Button Grid.Column="2" x:Name="SwapButton" Content="&#x21C4;" Width="34" Margin="8,0" FontSize="14" ToolTip="Swap left and right"
                     Command="{Binding SwapCommand}" />
             <ComboBox Grid.Column="3" x:Name="RightPathBox" IsEditable="True" Tag="Right" AllowDrop="True"
                       ItemsSource="{Binding RecentPaths}" Text="{Binding RightPath, UpdateSourceTrigger=PropertyChanged}"

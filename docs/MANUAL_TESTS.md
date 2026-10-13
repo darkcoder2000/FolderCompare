@@ -48,6 +48,9 @@ F "$L\content\time-only.txt" $t0.AddHours(3) "same"; F "$R\content\time-only.txt
 - [ ] Exclude `*.cs` plus F5 removes `main.cs` (and `src` becomes one-sided or empty).
 - [ ] Clicking column headers sorts (click again to reverse). Folders stay first unless *View → Folders before files* is off.
 - [ ] ←/→ collapse and expand folders. Expand all / Collapse all work.
+- [ ] The columns fill the list without a horizontal scrollbar, and the status column (≠, =, →, ...) sits centered
+      under the ⇄ button. Both stay aligned while resizing/maximizing the window, when the vertical scrollbar
+      appears or disappears, and after dragging a Size or Modified column (the name columns adjust).
 
 ## Copy
 - [ ] Select `newer-left.txt` and press Ctrl+Right: the preview lists one copy with overwrite "yes". Confirm, choose Overwrite: the row turns `=` without a full rescan, and the summary shows 1 succeeded.

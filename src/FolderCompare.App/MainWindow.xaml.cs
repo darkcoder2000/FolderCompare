@@ -64,6 +64,7 @@ public partial class MainWindow : Window, ISelectionHost
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
         RestoreColumnWidths(_vm.Settings);
+        InitColumnFitting();
         if (_vm.CompareOnStartup && _vm.CompareCommand.CanExecute(null))
             await _vm.CompareCommand.ExecuteAsync(null);
     }
@@ -156,6 +157,153 @@ public partial class MainWindow : Window, ISelectionHost
         if (settings.ColumnWidths is not { } widths || ResultList.View is not GridView grid || widths.Count != grid.Columns.Count) return;
         for (int i = 0; i < widths.Count; i++)
             if (widths[i] > 10) grid.Columns[i].Width = widths[i];
+    }
+
+    // ---- Column layout: fill the window, status column under the swap button ---------------
+
+    // Column order in MainWindow.xaml: left name, size, date | status | right name, size, date.
+    private const int LeftNameColumn = 0, StatusColumn = 3, RightNameColumn = 4;
+    private const double MinNameWidth = 120;
+    // Keeps the rows a few pixels narrower than the viewport (item borders, header margin) so no
+    // horizontal scrollbar appears.
+    private const double RightReserve = 6;
+
+    private ScrollViewer? _resultScroll;
+    private GridViewHeaderRowPresenter? _headerPresenter;
+    private bool _columnFitPending;
+    private bool _fittingColumns;
+    private bool _resizingColumn;
+    private bool _grippersLocked;
+
+    /// <summary>
+    /// The two name columns are sized automatically: together the columns fill the list's width and the
+    /// status column (≠, =, →, ...) sits centered under the ⇄ swap button. Size and date columns stay
+    /// user-resizable; the name columns absorb the change.
+    /// </summary>
+    private void InitColumnFitting()
+    {
+        if (ResultList.View is not GridView grid) return;
+
+        var widthDescriptor = DependencyPropertyDescriptor.FromProperty(GridViewColumn.WidthProperty, typeof(GridViewColumn));
+        foreach (var column in grid.Columns)
+            widthDescriptor.AddValueChanged(column, (_, _) => ScheduleColumnFit());
+
+        // The swap button only moves when the window width changes (DPI changes resize the window, too).
+        SizeChanged += (_, _) => ScheduleColumnFit();
+        ResultList.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, e) =>
+        {
+            // The vertical scrollbar appearing/disappearing changes the usable width.
+            if (e.ViewportWidthChange != 0) ScheduleColumnFit();
+        }));
+
+        // While a header gripper is dragged, re-fitting would move the dragged header under the mouse and the
+        // thumb's relative drag delta would run away (the column collapses). Fit once when the drag ends.
+        ResultList.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler((_, e) =>
+        {
+            if (IsHeaderGripper(e.OriginalSource)) _resizingColumn = true;
+        }), handledEventsToo: true);
+        ResultList.AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler((_, e) =>
+        {
+            if (!IsHeaderGripper(e.OriginalSource)) return;
+            _resizingColumn = false;
+            ScheduleColumnFit();
+        }), handledEventsToo: true);
+
+        ScheduleColumnFit();
+    }
+
+    private static bool IsHeaderGripper(object source) =>
+        source is Thumb { TemplatedParent: GridViewColumnHeader };
+
+    private void ScheduleColumnFit()
+    {
+        if (_fittingColumns || _resizingColumn || _columnFitPending) return;
+        _columnFitPending = true;
+        Dispatcher.InvokeAsync(() =>
+        {
+            _columnFitPending = false;
+            FitColumns();
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private void FitColumns()
+    {
+        if (ResultList.View is not GridView grid || grid.Columns.Count != 7) return;
+        _resultScroll ??= FindDescendant<ScrollViewer>(ResultList);
+        _headerPresenter ??= FindDescendant<GridViewHeaderRowPresenter>(ResultList);
+        if (_resultScroll is null || _headerPresenter is null || !SwapButton.IsVisible || _resultScroll.ViewportWidth <= 0) return;
+        LockAutoSizedGrippers();
+
+        var c = grid.Columns;
+        double status = c[StatusColumn].ActualWidth;
+        double leftFixed = c[1].ActualWidth + c[2].ActualWidth;
+        double rightFixed = c[5].ActualWidth + c[6].ActualWidth;
+
+        // Positions in the header row's coordinates, where the first column starts at x = 0. The header row
+        // scrolls with the list, so its current position already includes the horizontal offset.
+        double headerX = _headerPresenter.TranslatePoint(new Point(0, 0), _resultScroll).X;
+        double available = _resultScroll.ViewportWidth - (headerX + _resultScroll.HorizontalOffset) - RightReserve;
+        double swapCenter = SwapButton.TranslatePoint(new Point(SwapButton.ActualWidth / 2, 0), _resultScroll).X - headerX;
+
+        double leftName = swapCenter - status / 2 - leftFixed;
+        double rightName = available - (swapCenter + status / 2) - rightFixed;
+        if (leftName < MinNameWidth || rightName < MinNameWidth)
+        {
+            // Too narrow to align with the button: split what is left evenly (may scroll horizontally).
+            double rest = available - status - leftFixed - rightFixed;
+            leftName = rightName = Math.Max(MinNameWidth, rest / 2);
+        }
+
+        _fittingColumns = true;
+        try
+        {
+            SetColumnWidth(c[LeftNameColumn], leftName);
+            SetColumnWidth(c[RightNameColumn], rightName);
+        }
+        finally
+        {
+            _fittingColumns = false;
+        }
+    }
+
+    private static void SetColumnWidth(GridViewColumn column, double width)
+    {
+        width = Math.Floor(width);
+        if (Math.Abs(column.Width - width) >= 1) column.Width = width;
+    }
+
+    /// <summary>
+    /// Hides the resize grippers of the auto-sized columns (each gripper sits on its column's right edge),
+    /// so dragging there does not fight the automatic layout. Size and date columns stay resizable.
+    /// </summary>
+    private void LockAutoSizedGrippers()
+    {
+        if (_grippersLocked || _headerPresenter is null || ResultList.View is not GridView grid) return;
+        var autoSized = new[] { grid.Columns[LeftNameColumn], grid.Columns[StatusColumn], grid.Columns[RightNameColumn] };
+        int locked = 0;
+        foreach (var header in FindDescendants<GridViewColumnHeader>(_headerPresenter))
+        {
+            if (header.Column is null || !autoSized.Contains(header.Column)) continue;
+            if (header.Template?.FindName("PART_HeaderGripper", header) is Thumb gripper)
+            {
+                gripper.Visibility = Visibility.Collapsed;
+                locked++;
+            }
+        }
+        _grippersLocked = locked == autoSized.Length;
+    }
+
+    private static T? FindDescendant<T>(DependencyObject parent) where T : DependencyObject =>
+        FindDescendants<T>(parent).FirstOrDefault();
+
+    private static IEnumerable<T> FindDescendants<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match) yield return match;
+            foreach (var nested in FindDescendants<T>(child)) yield return nested;
+        }
     }
 
     private void Exit_Click(object sender, RoutedEventArgs e) => Close();
