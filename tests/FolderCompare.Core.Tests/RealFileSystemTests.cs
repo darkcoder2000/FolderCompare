@@ -5,7 +5,7 @@ using FolderCompare.Core.Operations;
 
 namespace FolderCompare.Core.Tests;
 
-/// <summary>Integration tests against the real Windows file system (long paths, locked files).</summary>
+/// <summary>Integration tests against the real file system of the host OS (long paths, locked files, Unix modes, case).</summary>
 public sealed class RealFileSystemTests : IDisposable
 {
     private static readonly DateTime T0 = new(2024, 5, 1, 12, 0, 0, DateTimeKind.Utc);
@@ -35,7 +35,7 @@ public sealed class RealFileSystemTests : IDisposable
     [Fact]
     public async Task LongPathsAndUnicode_AreScannedAndCopied()
     {
-        var deep = string.Join('\\', Enumerable.Range(0, 12).Select(i => $"folder_{i}_" + new string('x', 20)));
+        var deep = string.Join(Path.DirectorySeparatorChar, Enumerable.Range(0, 12).Select(i => $"folder_{i}_" + new string('x', 20)));
         var rel = Path.Combine(deep, "Ünïcödé 文件.txt");
         var source = Path.Combine(Left, rel);
         Assert.True(source.Length > 260);
@@ -78,5 +78,42 @@ public sealed class RealFileSystemTests : IDisposable
         Assert.False(File.Exists(Path.Combine(Right, "locked.txt")));
         Assert.False(File.Exists(Path.Combine(Right, "locked.txt" + FileOperationExecutor.TempSuffix)));
         Assert.True(File.Exists(Path.Combine(Right, "free.txt")));
+    }
+
+    [Fact]
+    public async Task UnixFileMode_IsCopied()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var source = Path.Combine(Left, "run.sh");
+        File.WriteAllText(source, "#!/bin/sh");
+        const UnixFileMode mode = UnixFileMode.UserRead | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
+        File.SetUnixFileMode(source, mode);
+
+        var result = await new DiffEngine(_fs).CompareAsync(Left, Right, new CompareOptions());
+        var plan = OperationPlanner.PlanCopy(result, result.Root.Children, CopyDirection.LeftToRight);
+        var summary = await new FileOperationExecutor(_fs, new FakeRecycleBin())
+            .ExecuteAsync(plan.Actions, new OperationOptions { LeftRoot = result.LeftRoot, RightRoot = result.RightRoot }, null);
+
+        Assert.Equal(1, summary.Succeeded);
+        Assert.Equal(mode, File.GetUnixFileMode(Path.Combine(Right, "run.sh")));
+    }
+
+    [Fact]
+    public async Task CaseOnlyNames_OnLinux_AreSeparateFiles()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        File.WriteAllText(Path.Combine(Left, "a.txt"), "lower");
+        File.WriteAllText(Path.Combine(Left, "A.txt"), "upper");
+
+        var result = await new DiffEngine(_fs).CompareAsync(Left, Right, new CompareOptions());
+        Assert.False(result.Options.Paths.IsIgnoreCase);
+        Assert.Equal(2, result.Root.Children.Count);
+
+        var plan = OperationPlanner.PlanCopy(result, result.Root.Children, CopyDirection.LeftToRight);
+        var summary = await new FileOperationExecutor(_fs, new FakeRecycleBin())
+            .ExecuteAsync(plan.Actions, new OperationOptions { LeftRoot = result.LeftRoot, RightRoot = result.RightRoot }, null);
+        Assert.Equal(2, summary.Succeeded);
+        Assert.Equal("upper", File.ReadAllText(Path.Combine(Right, "A.txt")));
+        Assert.Equal("lower", File.ReadAllText(Path.Combine(Right, "a.txt")));
     }
 }

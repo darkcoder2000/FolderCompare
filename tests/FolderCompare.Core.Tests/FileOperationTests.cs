@@ -23,13 +23,13 @@ public class FileOperationTests
     public void Copy_PreservesTimestampAndCreatesParents()
     {
         var fs = Create();
-        fs.AddFile($@"{L}\a\b\c.txt", T0, "hello");
+        fs.AddFile(P($@"{L}\a\b\c.txt"), T0, "hello");
         var r = fs.Compare();
 
         var summary = Run(fs, CopyPlan(r, "a"), Options());
 
         Assert.Equal(0, summary.Failed);
-        var target = $@"{R}\a\b\c.txt";
+        var target = P($@"{R}\a\b\c.txt");
         Assert.True(fs.File.Exists(target));
         Assert.Equal("hello", fs.File.ReadAllText(target));
         Assert.Equal(T0, fs.File.GetLastWriteTimeUtc(target));
@@ -40,53 +40,53 @@ public class FileOperationTests
     public void Copy_ThenRefresh_MakesIdentical()
     {
         var fs = Create();
-        fs.AddFile($@"{L}\d\x.txt", T0.AddHours(2), "new");
-        fs.AddFile($@"{R}\d\x.txt", T0, "old");
+        fs.AddFile(P($@"{L}\d\x.txt"), T0.AddHours(2), "new");
+        fs.AddFile(P($@"{R}\d\x.txt"), T0, "old");
         var r = fs.Compare();
-        var node = r.Find(@"d\x.txt");
+        var node = r.Find(P(@"d\x.txt"));
 
-        Run(fs, CopyPlan(r, @"d\x.txt"), Options());
+        Run(fs, CopyPlan(r, P(@"d\x.txt")), Options());
         DiffEngine.ApplyRefresh(new DiffEngine(fs).PrepareRefresh(r, node.Parent!, node.Name));
 
-        Assert.Equal(DiffStatus.Identical, r.Find(@"d\x.txt").Status);
+        Assert.Equal(DiffStatus.Identical, r.Find(P(@"d\x.txt")).Status);
         Assert.Equal(DiffStatus.Identical, r.Root.Status);
-        Assert.Equal("new", fs.File.ReadAllText($@"{R}\d\x.txt"));
+        Assert.Equal("new", fs.File.ReadAllText(P($@"{R}\d\x.txt")));
     }
 
     [Fact]
     public void Copy_RightToLeft()
     {
         var fs = Create();
-        fs.AddFile($@"{R}\only.txt", T0, "r");
+        fs.AddFile(P($@"{R}\only.txt"), T0, "r");
         var r = fs.Compare();
         Run(fs, CopyPlan(r, "only.txt", CopyDirection.RightToLeft), Options());
-        Assert.Equal("r", fs.File.ReadAllText($@"{L}\only.txt"));
+        Assert.Equal("r", fs.File.ReadAllText(P($@"{L}\only.txt")));
     }
 
     [Fact]
     public void Copy_PreservesReadOnlyAndOverwritesReadOnlyTarget()
     {
         var fs = Create();
-        fs.AddFile($@"{L}\ro.txt", T0.AddHours(1), "new");
-        fs.File.SetAttributes($@"{L}\ro.txt", FileAttributes.ReadOnly);
-        fs.AddFile($@"{R}\ro.txt", T0, "old");
-        fs.File.SetAttributes($@"{R}\ro.txt", FileAttributes.ReadOnly);
+        fs.AddFile(P($@"{L}\ro.txt"), T0.AddHours(1), "new");
+        fs.File.SetAttributes(P($@"{L}\ro.txt"), FileAttributes.ReadOnly);
+        fs.AddFile(P($@"{R}\ro.txt"), T0, "old");
+        fs.File.SetAttributes(P($@"{R}\ro.txt"), FileAttributes.ReadOnly);
         var r = fs.Compare();
 
         var summary = Run(fs, CopyPlan(r, "ro.txt"), Options());
 
         Assert.Equal(1, summary.Succeeded);
-        Assert.Equal("new", fs.File.ReadAllText($@"{R}\ro.txt"));
-        Assert.True(fs.File.GetAttributes($@"{R}\ro.txt").HasFlag(FileAttributes.ReadOnly));
+        Assert.Equal("new", fs.File.ReadAllText(P($@"{R}\ro.txt")));
+        Assert.True(fs.File.GetAttributes(P($@"{R}\ro.txt")).HasFlag(FileAttributes.ReadOnly));
     }
 
     [Fact]
     public void Copy_IdenticalFilesInsideFolderAreNotCopied()
     {
         var fs = Create();
-        fs.AddFile($@"{L}\d\same.txt", T0);
-        fs.AddFile($@"{R}\d\same.txt", T0);
-        fs.AddFile($@"{L}\d\new.txt", T0);
+        fs.AddFile(P($@"{L}\d\same.txt"), T0);
+        fs.AddFile(P($@"{R}\d\same.txt"), T0);
+        fs.AddFile(P($@"{L}\d\new.txt"), T0);
         var plan = CopyPlan(fs.Compare(), "d");
         var action = Assert.Single(plan.Actions);
         Assert.EndsWith("new.txt", action.TargetPath);
@@ -98,7 +98,7 @@ public class FileOperationTests
         var fs = ConflictFs(out var r);
         var summary = Run(fs, CopyPlan(r, "x.txt"), Options(OverwritePolicy.Skip));
         Assert.Equal(1, summary.Skipped);
-        Assert.Equal("old", fs.File.ReadAllText($@"{R}\x.txt"));
+        Assert.Equal("old", fs.File.ReadAllText(P($@"{R}\x.txt")));
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class FileOperationTests
         var fs = ConflictFs(out var r);
         var summary = Run(fs, CopyPlan(r, "x.txt"), Options(OverwritePolicy.OverwriteIfNewer));
         Assert.Equal(1, summary.Succeeded);
-        Assert.Equal("new", fs.File.ReadAllText($@"{R}\x.txt"));
+        Assert.Equal("new", fs.File.ReadAllText(P($@"{R}\x.txt")));
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public class FileOperationTests
         var fs = ConflictFs(out var r);
         var summary = Run(fs, CopyPlan(r, "x.txt", CopyDirection.RightToLeft), Options(OverwritePolicy.OverwriteIfNewer));
         Assert.Equal(1, summary.Skipped);
-        Assert.Equal("new", fs.File.ReadAllText($@"{L}\x.txt"));
+        Assert.Equal("new", fs.File.ReadAllText(P($@"{L}\x.txt")));
     }
 
     [Fact]
@@ -125,8 +125,8 @@ public class FileOperationTests
         var fs = ConflictFs(out var r);
         var summary = Run(fs, CopyPlan(r, "x.txt"), Options(OverwritePolicy.KeepBoth));
         Assert.Equal(1, summary.Succeeded);
-        Assert.Equal("old", fs.File.ReadAllText($@"{R}\x.txt"));
-        Assert.Equal("new", fs.File.ReadAllText($@"{R}\x (1).txt"));
+        Assert.Equal("old", fs.File.ReadAllText(P($@"{R}\x.txt")));
+        Assert.Equal("new", fs.File.ReadAllText(P($@"{R}\x (1).txt")));
     }
 
     [Fact]
@@ -135,8 +135,8 @@ public class FileOperationTests
         var fs = Create();
         for (int i = 0; i < 3; i++)
         {
-            fs.AddFile($@"{L}\f{i}.txt", T0.AddHours(1), "new");
-            fs.AddFile($@"{R}\f{i}.txt", T0, "old");
+            fs.AddFile(P($@"{L}\f{i}.txt"), T0.AddHours(1), "new");
+            fs.AddFile(P($@"{R}\f{i}.txt"), T0, "old");
         }
         var r = fs.Compare();
         int asked = 0;
@@ -168,7 +168,7 @@ public class FileOperationTests
         Assert.NotNull(seen);
         Assert.True(seen!.TargetIsNewer);
         Assert.Equal(1, summary.Skipped);
-        Assert.Equal("new", fs.File.ReadAllText($@"{L}\x.txt"));
+        Assert.Equal("new", fs.File.ReadAllText(P($@"{L}\x.txt")));
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class FileOperationTests
         var fs = SameTimeConflictFs(out var r);
         var summary = Run(fs, CopyPlan(r, "x.txt"), Options(policy));
         Assert.Equal(1, summary.Skipped);
-        Assert.Equal("right", fs.File.ReadAllText($@"{R}\x.txt"));
+        Assert.Equal("right", fs.File.ReadAllText(P($@"{R}\x.txt")));
     }
 
     [Fact]
@@ -213,7 +213,7 @@ public class FileOperationTests
         Assert.True(seen!.DirectionUnknown);
         Assert.False(seen.TargetIsNewer);
         Assert.Equal(1, summary.Succeeded);
-        Assert.Equal("left!", fs.File.ReadAllText($@"{R}\x.txt"));
+        Assert.Equal("left!", fs.File.ReadAllText(P($@"{R}\x.txt")));
     }
 
     [Fact]
@@ -223,15 +223,15 @@ public class FileOperationTests
         OverwriteResolver resolver = (_, _) => Task.FromResult(new OverwriteDecision(OverwriteChoice.OverwriteIfNewer, false));
         var summary = Run(fs, CopyPlan(r, "x.txt"), Options(OverwritePolicy.Ask), resolver);
         Assert.Equal(1, summary.Skipped);
-        Assert.Equal("right", fs.File.ReadAllText($@"{R}\x.txt"));
+        Assert.Equal("right", fs.File.ReadAllText(P($@"{R}\x.txt")));
     }
 
     [Fact]
     public void SameContentDifferentTime_IsNotCopied()
     {
         var fs = Create();
-        fs.AddFile($@"{L}\x.txt", T0.AddHours(3), "same");
-        fs.AddFile($@"{R}\x.txt", T0, "same");
+        fs.AddFile(P($@"{L}\x.txt"), T0.AddHours(3), "same");
+        fs.AddFile(P($@"{R}\x.txt"), T0, "same");
         var r = fs.Compare(new CompareOptions { ContentCompare = ContentCompareMode.WhenSizesEqual });
 
         var plan = CopyPlan(r, "x.txt");
@@ -247,14 +247,14 @@ public class FileOperationTests
         OverwriteResolver resolver = (_, _) => Task.FromResult(new OverwriteDecision(OverwriteChoice.Cancel, false));
         var summary = Run(fs, CopyPlan(r, "x.txt"), Options(OverwritePolicy.Ask), resolver);
         Assert.True(summary.Cancelled);
-        Assert.Equal("old", fs.File.ReadAllText($@"{R}\x.txt"));
+        Assert.Equal("old", fs.File.ReadAllText(P($@"{R}\x.txt")));
     }
 
     [Fact]
     public void Verification_FailsWhenTimestampNotPreserved()
     {
         var mock = Create();
-        mock.AddFile($@"{L}\a.txt", T0, "x");
+        mock.AddFile(P($@"{L}\a.txt"), T0, "x");
         var r = mock.Compare();
         var fs = new NoTimestampFileSystem(mock);
 
@@ -269,22 +269,22 @@ public class FileOperationTests
     public void PathTraversal_IsRejected()
     {
         var fs = Create();
-        fs.AddFile($@"{L}\a.txt", T0);
+        fs.AddFile(P($@"{L}\a.txt"), T0);
         var r = fs.Compare();
         var evil = new PlannedAction
         {
             Kind = ActionKind.CopyFile,
             Node = r.Find("a.txt"),
             TargetSide = Side.Right,
-            SourcePath = $@"{L}\a.txt",
-            TargetPath = $@"{R}\..\outside\a.txt",
+            SourcePath = P($@"{L}\a.txt"),
+            TargetPath = P($@"{R}\..\outside\a.txt"),
             Size = 4,
         };
         var summary = new FileOperationExecutor(fs, new FakeRecycleBin())
             .ExecuteAsync([evil], Options(), null).GetAwaiter().GetResult();
 
         Assert.Equal(ItemOutcome.Failed, summary.Items[0].Outcome);
-        Assert.False(fs.File.Exists(@"C:\outside\a.txt"));
+        Assert.False(fs.File.Exists(P(@"C:\outside\a.txt")));
     }
 
     [Fact]
@@ -302,42 +302,42 @@ public class FileOperationTests
     public void Delete_Permanent()
     {
         var fs = Create();
-        fs.AddFile($@"{L}\a.txt", T0);
-        fs.AddFile($@"{L}\d\b.txt", T0);
-        fs.File.SetAttributes($@"{L}\d\b.txt", FileAttributes.ReadOnly);
-        fs.AddFile($@"{R}\a.txt", T0);
+        fs.AddFile(P($@"{L}\a.txt"), T0);
+        fs.AddFile(P($@"{L}\d\b.txt"), T0);
+        fs.File.SetAttributes(P($@"{L}\d\b.txt"), FileAttributes.ReadOnly);
+        fs.AddFile(P($@"{R}\a.txt"), T0);
         var r = fs.Compare();
 
         var summary = Run(fs, OperationPlanner.PlanDelete(r, [r.Find("a.txt"), r.Find("d")], Sides.Left), Options());
 
         Assert.Equal(2, summary.Succeeded);
-        Assert.False(fs.File.Exists($@"{L}\a.txt"));
-        Assert.False(fs.Directory.Exists($@"{L}\d"));
-        Assert.True(fs.File.Exists($@"{R}\a.txt"));
+        Assert.False(fs.File.Exists(P($@"{L}\a.txt")));
+        Assert.False(fs.Directory.Exists(P($@"{L}\d")));
+        Assert.True(fs.File.Exists(P($@"{R}\a.txt")));
     }
 
     [Fact]
     public void Delete_ToRecycleBin_UsesRecycleBin()
     {
         var fs = Create();
-        fs.AddFile($@"{L}\a.txt", T0);
-        fs.AddFile($@"{R}\a.txt", T0);
+        fs.AddFile(P($@"{L}\a.txt"), T0);
+        fs.AddFile(P($@"{R}\a.txt"), T0);
         var r = fs.Compare();
         var bin = new FakeRecycleBin();
 
         Run(fs, OperationPlanner.PlanDelete(r, [r.Find("a.txt")], Sides.Both), Options(recycle: true), bin: bin);
 
-        Assert.Equal([$@"{L}\a.txt", $@"{R}\a.txt"], bin.Files);
-        Assert.True(fs.File.Exists($@"{L}\a.txt")); // fake bin does not touch the file system
+        Assert.Equal([P($@"{L}\a.txt"), P($@"{R}\a.txt")], bin.Files);
+        Assert.True(fs.File.Exists(P($@"{L}\a.txt"))); // fake bin does not touch the file system
     }
 
     [Fact]
     public void PlanDelete_SkipsAncestorDuplicates()
     {
         var fs = Create();
-        fs.AddFile($@"{L}\d\a.txt", T0);
+        fs.AddFile(P($@"{L}\d\a.txt"), T0);
         var r = fs.Compare();
-        var plan = OperationPlanner.PlanDelete(r, [r.Find(@"d\a.txt"), r.Find("d")], Sides.Left);
+        var plan = OperationPlanner.PlanDelete(r, [r.Find(P(@"d\a.txt")), r.Find("d")], Sides.Left);
         Assert.Single(plan.Actions);
         Assert.True(plan.Actions[0].IsDirectory);
     }
@@ -346,21 +346,21 @@ public class FileOperationTests
     public void Copy_PreCancelled_DoesNothing()
     {
         var fs = Create();
-        fs.AddFile($@"{L}\a.txt", T0);
+        fs.AddFile(P($@"{L}\a.txt"), T0);
         var r = fs.Compare();
         using var cts = new CancellationTokenSource();
         cts.Cancel();
         var summary = Run(fs, CopyPlan(r, "a.txt"), Options(), ct: cts.Token);
         Assert.True(summary.Cancelled);
-        Assert.False(fs.File.Exists($@"{R}\a.txt"));
+        Assert.False(fs.File.Exists(P($@"{R}\a.txt")));
     }
 
     [Fact]
     public async Task Copy_CancelMidFile_LeavesNoPartialFile()
     {
         var fs = Create();
-        fs.AddFile($@"{L}\big.bin", new MockFileData(new byte[40 * 1024 * 1024]));
-        fs.File.SetLastWriteTimeUtc($@"{L}\big.bin", T0);
+        fs.AddFile(P($@"{L}\big.bin"), new MockFileData(new byte[40 * 1024 * 1024]));
+        fs.File.SetLastWriteTimeUtc(P($@"{L}\big.bin"), T0);
         var r = fs.Compare();
         using var cts = new CancellationTokenSource();
         var progress = new InlineProgress(p =>
@@ -372,26 +372,26 @@ public class FileOperationTests
             .ExecuteAsync(CopyPlan(r, "big.bin").Actions, Options(), null, progress, cts.Token);
 
         Assert.True(summary.Cancelled);
-        Assert.False(fs.File.Exists($@"{R}\big.bin"));
-        Assert.False(fs.File.Exists($@"{R}\big.bin" + FileOperationExecutor.TempSuffix));
+        Assert.False(fs.File.Exists(P($@"{R}\big.bin")));
+        Assert.False(fs.File.Exists(P($@"{R}\big.bin") + FileOperationExecutor.TempSuffix));
     }
 
     [Fact]
     public void Rename_RenamesWithinFolder()
     {
         var fs = Create();
-        fs.AddFile($@"{L}\d\a.txt", T0);
+        fs.AddFile(P($@"{L}\d\a.txt"), T0);
         var ex = new FileOperationExecutor(fs, new FakeRecycleBin());
-        ex.Rename(Options(), Side.Left, @"d\a.txt", "b.txt");
-        Assert.True(fs.File.Exists($@"{L}\d\b.txt"));
-        Assert.Throws<ArgumentException>(() => ex.Rename(Options(), Side.Left, @"d\b.txt", @"..\..\evil.txt"));
+        ex.Rename(Options(), Side.Left, P(@"d\a.txt"), "b.txt");
+        Assert.True(fs.File.Exists(P($@"{L}\d\b.txt")));
+        Assert.Throws<ArgumentException>(() => ex.Rename(Options(), Side.Left, P(@"d\b.txt"), P(@"..\..\evil.txt")));
     }
 
     private static MockFileSystem ConflictFs(out DiffResult result)
     {
         var fs = Create();
-        fs.AddFile($@"{L}\x.txt", T0.AddHours(1), "new");
-        fs.AddFile($@"{R}\x.txt", T0, "old");
+        fs.AddFile(P($@"{L}\x.txt"), T0.AddHours(1), "new");
+        fs.AddFile(P($@"{R}\x.txt"), T0, "old");
         result = fs.Compare();
         return fs;
     }
@@ -399,8 +399,8 @@ public class FileOperationTests
     private static MockFileSystem SameTimeConflictFs(out DiffResult result)
     {
         var fs = Create();
-        fs.AddFile($@"{L}\x.txt", T0, "left!");
-        fs.AddFile($@"{R}\x.txt", T0, "right");
+        fs.AddFile(P($@"{L}\x.txt"), T0, "left!");
+        fs.AddFile(P($@"{R}\x.txt"), T0, "right");
         result = fs.Compare(new CompareOptions { ContentCompare = ContentCompareMode.WhenTimestampsEqual });
         return fs;
     }
@@ -430,6 +430,8 @@ internal sealed class NoTimestampFileSystem(MockFileSystem inner) : IFileSystem
     public IDirectoryInfoFactory DirectoryInfo => inner.DirectoryInfo;
     public IDriveInfoFactory DriveInfo => inner.DriveInfo;
     public IFileSystemWatcherFactory FileSystemWatcher => inner.FileSystemWatcher;
+    public IFileVersionInfoFactory FileVersionInfo => inner.FileVersionInfo;
+    public IRandomAccess RandomAccess => inner.RandomAccess;
 
     private sealed class NoTimestampFile(MockFileSystem fs) : MockFile(fs)
     {

@@ -49,7 +49,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ILogger<MainViewModel> _logger;
 
     private readonly Dictionary<DiffNode, RowViewModel> _rowCache = new();
-    private readonly HashSet<string> _expanded = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _expanded = new(StringComparer.Ordinal);
     private readonly Dictionary<DiffNode, bool> _visible = new();
     private readonly HashSet<RowViewModel> _selected = new();
     private DiffResult? _result;
@@ -437,8 +437,8 @@ public sealed partial class MainViewModel : ObservableObject
     private void RebuildRows(bool preserveSelection = true)
     {
         var selectedPaths = preserveSelection
-            ? new HashSet<string>(_selected.Select(r => r.Node.RelativePath), StringComparer.OrdinalIgnoreCase)
-            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            ? new HashSet<string>(_selected.Select(r => r.Node.RelativePath), StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal);
 
         _visible.Clear();
         var list = new List<RowViewModel>();
@@ -825,7 +825,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 if (item.FinalTargetPath is null || !topSet.Contains(item.Action.Node) || item.Action.Node.Parent is null) continue;
                 var finalName = Path.GetFileName(item.FinalTargetPath);
-                if (!string.Equals(finalName, item.Action.Node.Name, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(finalName, item.Action.Node.Name, result.Options.Paths.Comparison))
                     targets.Add((item.Action.Node.Parent, finalName));
             }
             await RefreshNodesAsync(result, targets);
@@ -850,14 +850,14 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task RefreshNodesAsync(DiffResult result, IReadOnlyCollection<(DiffNode Parent, string Name)> targets)
     {
         var distinct = targets
-            .DistinctBy(t => (t.Parent, t.Name.ToUpperInvariant()))
+            .DistinctBy(t => (t.Parent, result.Options.Paths.IsIgnoreCase ? t.Name.ToUpperInvariant() : t.Name))
             .ToList();
         var data = await Task.Run(() => distinct.Select(t => _engine.PrepareRefresh(result, t.Parent, t.Name)).ToList());
         if (!ReferenceEquals(result, _result)) return; // a new comparison replaced the tree meanwhile
 
         foreach (var d in data)
         {
-            var old = d.Parent.Children.FirstOrDefault(c => string.Equals(c.Name, d.Name, StringComparison.OrdinalIgnoreCase));
+            var old = d.Parent.Children.FirstOrDefault(c => string.Equals(c.Name, d.Name, result.Options.Paths.Comparison));
             if (old is not null) EvictRows(old);
             DiffEngine.ApplyRefresh(d);
             if (d.Fresh is not null) SortTree(d.Fresh);
@@ -942,7 +942,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (!ReferenceEquals(result, _result) || IsBusy) return;
         var node = result.Root.Descendants().FirstOrDefault(n =>
-            string.Equals(n.RelativePath, relativePath, StringComparison.OrdinalIgnoreCase));
+            string.Equals(n.RelativePath, relativePath, result.Options.Paths.Comparison));
         if (node?.Parent is null) return;
         try
         {

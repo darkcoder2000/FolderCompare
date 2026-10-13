@@ -32,8 +32,8 @@ public class FileComparerTests
     [InlineData(ContentCompareMode.WhenSizesEqual)]
     public void SameTime_DifferentSize_IsSameTimeDifferentContent(ContentCompareMode mode)
     {
-        var l = File($@"{L}\a.txt", T0, "short");
-        var r = File($@"{R}\a.txt", T0, "a lot longer");
+        var l = File(P($@"{L}\a.txt"), T0, "short");
+        var r = File(P($@"{R}\a.txt"), T0, "a lot longer");
         Assert.Equal(DiffStatus.SameTimeDifferentContent, Compare(l, r, new CompareOptions { ContentCompare = mode }));
     }
 
@@ -41,16 +41,16 @@ public class FileComparerTests
     public void SameTime_SameSize_DifferentContent_ModeOff_IsIdentical()
     {
         // Known limitation of the fast mode: the content is not read.
-        var l = File($@"{L}\a.txt", T0, "abc");
-        var r = File($@"{R}\a.txt", T0, "xyz");
+        var l = File(P($@"{L}\a.txt"), T0, "abc");
+        var r = File(P($@"{R}\a.txt"), T0, "xyz");
         Assert.Equal(DiffStatus.Identical, Compare(l, r, Off));
     }
 
     [Fact]
     public void SameTime_SameSize_DifferentContent_Verified_IsSameTimeDifferentContent()
     {
-        var l = File($@"{L}\a.txt", T0, "abc");
-        var r = File($@"{R}\a.txt", T0.AddSeconds(1), "xyz");
+        var l = File(P($@"{L}\a.txt"), T0, "abc");
+        var r = File(P($@"{R}\a.txt"), T0.AddSeconds(1), "xyz");
         Assert.Equal(DiffStatus.SameTimeDifferentContent, Compare(l, r, WhenTimesEqual));
         Assert.Equal(DiffStatus.SameTimeDifferentContent, Compare(l, r, WhenSizesEqual));
     }
@@ -58,16 +58,16 @@ public class FileComparerTests
     [Fact]
     public void SameTime_SameContent_Verified_IsIdentical()
     {
-        var l = File($@"{L}\a.txt", T0, "abc");
-        var r = File($@"{R}\a.txt", T0, "abc");
+        var l = File(P($@"{L}\a.txt"), T0, "abc");
+        var r = File(P($@"{R}\a.txt"), T0, "abc");
         Assert.Equal(DiffStatus.Identical, Compare(l, r, WhenTimesEqual));
     }
 
     [Fact]
     public void DifferentTime_SameContent()
     {
-        var l = File($@"{L}\a.txt", T0.AddHours(3), "abc");
-        var r = File($@"{R}\a.txt", T0, "abc");
+        var l = File(P($@"{L}\a.txt"), T0.AddHours(3), "abc");
+        var r = File(P($@"{R}\a.txt"), T0, "abc");
         Assert.Equal(DiffStatus.NewerLeft, Compare(l, r, Off));
         Assert.Equal(DiffStatus.NewerLeft, Compare(l, r, WhenTimesEqual));
         Assert.Equal(DiffStatus.SameContentDifferentTime, Compare(l, r, WhenSizesEqual));
@@ -76,16 +76,16 @@ public class FileComparerTests
     [Fact]
     public void DifferentTime_SameSize_DifferentContent_KeepsDirection()
     {
-        var l = File($@"{L}\a.txt", T0, "abc");
-        var r = File($@"{R}\a.txt", T0.AddHours(3), "xyz");
+        var l = File(P($@"{L}\a.txt"), T0, "abc");
+        var r = File(P($@"{R}\a.txt"), T0.AddHours(3), "xyz");
         Assert.Equal(DiffStatus.NewerRight, Compare(l, r, WhenSizesEqual));
     }
 
     [Fact]
     public void DifferentTime_DifferentSize_KeepsDirection()
     {
-        var l = File($@"{L}\a.txt", T0.AddMinutes(5), "short");
-        var r = File($@"{R}\a.txt", T0, "a lot longer");
+        var l = File(P($@"{L}\a.txt"), T0.AddMinutes(5), "short");
+        var r = File(P($@"{R}\a.txt"), T0, "a lot longer");
         Assert.Equal(DiffStatus.NewerLeft, Compare(l, r, WhenSizesEqual));
         Assert.Equal(DiffStatus.NewerRight, Compare(r, l, Off));
     }
@@ -94,8 +94,8 @@ public class FileComparerTests
     public void DstOffset_WithDifferentContent_IsNotIdentical()
     {
         var options = WhenTimesEqual with { IgnoreDstOffset = true };
-        var l = File($@"{L}\a.txt", T0.AddHours(1), "abc");
-        var r = File($@"{R}\a.txt", T0, "xyz");
+        var l = File(P($@"{L}\a.txt"), T0.AddHours(1), "abc");
+        var r = File(P($@"{R}\a.txt"), T0, "xyz");
         Assert.Equal(DiffStatus.SameTimeDifferentContent, Compare(l, r, options));
     }
 
@@ -106,9 +106,9 @@ public class FileComparerTests
         new Random(42).NextBytes(a);
         var b = (byte[])a.Clone();
         b[^1] ^= 0xFF;
-        var l = File($@"{L}\big.bin", T0, a);
-        var r = File($@"{R}\big.bin", T0, b);
-        var same = File($@"{R}\same.bin", T0, (byte[])a.Clone());
+        var l = File(P($@"{L}\big.bin"), T0, a);
+        var r = File(P($@"{R}\big.bin"), T0, b);
+        var same = File(P($@"{R}\same.bin"), T0, (byte[])a.Clone());
 
         Assert.Equal(DiffStatus.SameTimeDifferentContent, Compare(l, r, WhenTimesEqual));
         Assert.Equal(DiffStatus.Identical, Compare(l, same, WhenTimesEqual));
@@ -117,16 +117,16 @@ public class FileComparerTests
     [Fact]
     public void EmptyFiles_AreIdentical()
     {
-        var l = File($@"{L}\e.txt", T0, "");
-        var r = File($@"{R}\e.txt", T0, "");
+        var l = File(P($@"{L}\e.txt"), T0, "");
+        var r = File(P($@"{R}\e.txt"), T0, "");
         Assert.Equal(DiffStatus.Identical, Compare(l, r, WhenSizesEqual));
     }
 
     [Fact]
     public void ModeOff_NeverReadsContent()
     {
-        var l = File($@"{L}\a.txt", T0, "abc");
-        var r = File($@"{R}\a.txt", T0, "abc");
+        var l = File(P($@"{L}\a.txt"), T0, "abc");
+        var r = File(P($@"{R}\a.txt"), T0, "abc");
         var result = FileComparer.Compare(l, r, Off, new ThrowingComparer(new IOException("must not read")), CancellationToken.None);
         Assert.Equal(DiffStatus.Identical, result.Status);
     }
@@ -134,8 +134,8 @@ public class FileComparerTests
     [Fact]
     public void LockedFile_IsError()
     {
-        var l = File($@"{L}\a.txt", T0, "abc");
-        var r = File($@"{R}\a.txt", T0, "abc");
+        var l = File(P($@"{L}\a.txt"), T0, "abc");
+        var r = File(P($@"{R}\a.txt"), T0, "abc");
         _fs.GetFile(r.FullPath).AllowedFileShare = FileShare.None;
 
         var result = FileComparer.Compare(l, r, WhenTimesEqual, new ByteContentComparer(_fs), CancellationToken.None);
@@ -149,8 +149,8 @@ public class FileComparerTests
     [InlineData(typeof(UnauthorizedAccessException))]
     public void ReadErrors_AreError(Type exceptionType)
     {
-        var l = File($@"{L}\a.txt", T0, "abc");
-        var r = File($@"{R}\a.txt", T0, "abc");
+        var l = File(P($@"{L}\a.txt"), T0, "abc");
+        var r = File(P($@"{R}\a.txt"), T0, "abc");
         var ex = (Exception)Activator.CreateInstance(exceptionType, "Access is denied.")!;
 
         var result = FileComparer.Compare(l, r, WhenTimesEqual, new ThrowingComparer(ex), CancellationToken.None);
@@ -163,8 +163,8 @@ public class FileComparerTests
     public void Cancellation_DuringContentCompare_Throws()
     {
         var data = new byte[ByteContentComparer.BufferSize * 4];
-        var l = File($@"{L}\big.bin", T0, data);
-        var r = File($@"{R}\big.bin", T0, (byte[])data.Clone());
+        var l = File(P($@"{L}\big.bin"), T0, data);
+        var r = File(P($@"{R}\big.bin"), T0, (byte[])data.Clone());
         using var cts = new CancellationTokenSource();
 
         Assert.Throws<OperationCanceledException>(() =>

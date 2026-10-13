@@ -33,7 +33,7 @@ public static class ReportExporter
         writer.WriteLine();
         foreach (var n in nodes)
         {
-            var line = $"{n.Status,-24} {n.RelativePath}{(n.IsDirectory ? "\\" : "")}";
+            var line = $"{n.Status,-24} {n.RelativePath}{(n.IsDirectory ? Path.DirectorySeparatorChar.ToString() : "")}";
             if (n.Left is not null) line += $"  L: {FormatDate(n.Left.LastWriteUtc)}";
             if (n.Right is not null) line += $"  R: {FormatDate(n.Right.LastWriteUtc)}";
             if (n.ErrorMessage is not null) line += $"  ({n.ErrorMessage})";

@@ -4,13 +4,21 @@ See README.md for features, shortcuts and layout. This file holds working knowle
 
 ## Build & test
 - .NET 10 SDK (all projects target `net10.0` / `net10.0-windows`).
-- `dotnet build`, `dotnet test` (xUnit, all tests must pass before committing).
+- `dotnet build`, `dotnet test` (xUnit, all tests must pass before committing). Core tests must also pass on Linux
+  (see `CLAUDE.local.md` for the local WSL setup).
 - Release exe: `dotnet publish src/FolderCompare.App -c Release -o publish` → single-file self-contained
   `publish\FolderCompare.exe` (~156 MB). Delete `publish\` first so no stale files are left.
 
 ## Architecture rules
 - `FolderCompare.Core` has no WPF reference. All file access goes through `System.IO.Abstractions.IFileSystem`
   so it stays testable with the mock file system. New logic goes into Core with unit tests where possible.
+- Core is cross-platform (tests run on Windows, Linux, macOS). Never hard-code `\` or `OrdinalIgnoreCase` for paths:
+  - `DiffNode.RelativePath` uses the OS separator (`DiffNode.JoinRelative`); glob patterns accept `/` and `\`.
+  - Name matching goes through `PathComparison` (`CompareOptions.PathComparison`; null = `ForRoots`: case-insensitive
+    on Windows/macOS unless a root probes case-sensitive, case-sensitive on Linux). `DiffResult.Options.Paths` holds
+    the resolved value – use it for name/path comparisons in the App too.
+  - Tests are written with Windows paths wrapped in `TestFs.P(...)`, which maps them to `/...` on Unix.
+  - "Hidden & system" on Unix = dotfiles (that's how .NET maps attributes there).
 - App is MVVM (CommunityToolkit.Mvvm, `[ObservableProperty]` / `[RelayCommand]`), services registered via DI in
   `App.xaml.cs`. After changing state that affects a command, update `RefreshCommandStates` in `MainViewModel`.
 - Colors live only in `Themes/Colors.xaml` (prepared for a later dark theme), never hard-coded in XAML/C#.
@@ -18,7 +26,11 @@ See README.md for features, shortcuts and layout. This file holds working knowle
 
 ## Safety invariants (do not weaken)
 - Scanning never writes. Every copy/delete target must be checked to be strictly inside its root after `GetFullPath`.
-- Copies write to `<name>.tmpcopy` then rename; preserve and verify timestamp/size/attributes.
+- Containment checks (`SafetyValidator.IsInside`/`EnsureInsideRoot`) are ordinal (case-sensitive) and use
+  `Path.DirectorySeparatorChar`; `ValidateRoots` ignores case for "same/nested folder" because that rejects more.
+- Copies write to `<name>.tmpcopy` then rename; preserve and verify timestamp/size/attributes, on Unix also the
+  file mode (read it with `IFile.GetUnixFileMode` – `IFileInfo.UnixFileMode` is never filled by the wrapper).
+  Creation time is only set off Linux.
 - Delete goes to the Recycle Bin by default; overwriting a newer file always asks.
 - Log every file operation (Serilog).
 

@@ -9,6 +9,10 @@ namespace FolderCompare.Core.Comparison;
 /// </summary>
 public sealed class PathPatternMatcher
 {
+    // Patterns may use / or \ on every OS; both mean the OS directory separator, like DiffNode.RelativePath.
+    private static readonly char Sep = Path.DirectorySeparatorChar;
+    private static readonly string NotSep = "[^" + Regex.Escape(Sep.ToString()) + "]";
+
     private readonly Pattern[] _include;
     private readonly Pattern[] _exclude;
 
@@ -29,7 +33,7 @@ public sealed class PathPatternMatcher
         if (string.IsNullOrWhiteSpace(patterns)) return [];
         return patterns
             .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(p => p.Replace('/', '\\').Trim('\\'))
+            .Select(p => p.Replace('/', Sep).Replace('\\', Sep).Trim(Sep))
             .Where(p => p.Length > 0)
             .Select(p => new Pattern(p))
             .ToArray();
@@ -42,7 +46,7 @@ public sealed class PathPatternMatcher
 
         public Pattern(string glob)
         {
-            _matchPath = glob.Contains('\\');
+            _matchPath = glob.Contains(Sep);
             _regex = new Regex(ToRegex(glob), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         }
 
@@ -63,12 +67,12 @@ public sealed class PathPatternMatcher
                     }
                     else
                     {
-                        sb.Append(@"[^\\]*");
+                        sb.Append(NotSep).Append('*');
                     }
                 }
                 else if (c == '?')
                 {
-                    sb.Append(@"[^\\]");
+                    sb.Append(NotSep);
                 }
                 else
                 {

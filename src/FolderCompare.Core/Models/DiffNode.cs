@@ -13,6 +13,7 @@ public sealed class DiffNode
         IsDirectory = isDirectory;
     }
 
+    /// <summary>Path below the roots, using the OS directory separator (<c>\</c> on Windows, <c>/</c> elsewhere).</summary>
     public string RelativePath { get; }
     public string Name { get; }
     public bool IsDirectory { get; }
@@ -50,6 +51,9 @@ public sealed class DiffNode
             if (ReferenceEquals(p, ancestor)) return true;
         return false;
     }
+
+    public static string JoinRelative(string rel, string name) =>
+        rel.Length == 0 ? name : rel + Path.DirectorySeparatorChar + name;
 
     public override string ToString() => $"{RelativePath} [{Status}]";
 }

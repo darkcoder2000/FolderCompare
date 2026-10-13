@@ -7,8 +7,10 @@ namespace FolderCompare.Core.Comparison;
 /// <summary>Data gathered off the UI thread for refreshing one child of a folder node.</summary>
 public sealed class RefreshData
 {
-    internal RefreshData(DiffNode parent, string name, DiffNode? fresh, List<(DiffNode Node, FileInfoSnapshot? Left, FileInfoSnapshot? Right)> ancestors)
+    internal RefreshData(DiffNode parent, string name, DiffNode? fresh, List<(DiffNode Node, FileInfoSnapshot? Left, FileInfoSnapshot? Right)> ancestors,
+                         PathComparison paths)
     {
+        Paths = paths;
         Parent = parent;
         Name = name;
         Fresh = fresh;
@@ -20,6 +22,7 @@ public sealed class RefreshData
     /// <summary>The rescanned node, or null if the path no longer exists on either side.</summary>
     public DiffNode? Fresh { get; }
     internal List<(DiffNode Node, FileInfoSnapshot? Left, FileInfoSnapshot? Right)> Ancestors { get; }
+    internal PathComparison Paths { get; }
 }
 
 /// <summary>Scans both trees and merges them into a <see cref="DiffNode"/> tree. Never modifies the file system.</summary>
@@ -51,6 +54,8 @@ public sealed class DiffEngine
 
         leftRoot = SafetyValidator.Normalize(_fs, leftRoot);
         rightRoot = SafetyValidator.Normalize(_fs, rightRoot);
+        if (options.PathComparison is null)
+            options = options with { PathComparison = PathComparison.ForRoots(_fs, leftRoot, rightRoot) };
         var tracker = new ProgressTracker(progress);
 
         // Bounded parallelism: one scanner task per side.
@@ -87,7 +92,7 @@ public sealed class DiffEngine
     /// <summary>Rescans the child <paramref name="name"/> of <paramref name="parent"/> on both sides (I/O, call off the UI thread).</summary>
     public RefreshData PrepareRefresh(DiffResult result, DiffNode parent, string name, CancellationToken ct = default)
     {
-        var rel = parent.RelativePath.Length == 0 ? name : parent.RelativePath + "\\" + name;
+        var rel = DiffNode.JoinRelative(parent.RelativePath, name);
         var left = _scanner.ScanPath(result.LeftRoot, rel, result.Options, ct);
         var right = _scanner.ScanPath(result.RightRoot, rel, result.Options, ct);
         var pending = new List<DiffNode>();
@@ -104,14 +109,14 @@ public sealed class DiffEngine
             ancestors.Add((a, _scanner.Stat(_fs.Path.Join(result.LeftRoot, a.RelativePath)),
                               _scanner.Stat(_fs.Path.Join(result.RightRoot, a.RelativePath))));
         }
-        return new RefreshData(parent, name, fresh, ancestors);
+        return new RefreshData(parent, name, fresh, ancestors, result.Options.Paths);
     }
 
     /// <summary>Applies a prepared refresh to the tree (call on the thread that owns the tree).</summary>
     public static void ApplyRefresh(RefreshData data)
     {
         var parent = data.Parent;
-        int index = parent.Children.FindIndex(c => string.Equals(c.Name, data.Name, StringComparison.OrdinalIgnoreCase));
+        int index = parent.Children.FindIndex(c => string.Equals(c.Name, data.Name, data.Paths.Comparison));
         if (data.Fresh is null)
         {
             if (index >= 0) parent.Children.RemoveAt(index);
@@ -189,7 +194,7 @@ public sealed class DiffEngine
             {
                 ScanEntry? r = null;
                 right?.Children?.TryGetValue(childName, out r);
-                AddChild(node, Merge(l.Name, Join(rel, l.Name), l, r, options, pending));
+                AddChild(node, Merge(l.Name, DiffNode.JoinRelative(rel, l.Name), l, r, options, pending));
             }
         }
         if (right?.Children is not null)
@@ -197,7 +202,7 @@ public sealed class DiffEngine
             foreach (var (childName, r) in right.Children)
             {
                 if (left?.Children?.ContainsKey(childName) == true) continue;
-                AddChild(node, Merge(r.Name, Join(rel, r.Name), null, r, options, pending));
+                AddChild(node, Merge(r.Name, DiffNode.JoinRelative(rel, r.Name), null, r, options, pending));
             }
         }
 
@@ -247,5 +252,4 @@ public sealed class DiffEngine
         parent.Children.Add(child);
     }
 
-    private static string Join(string rel, string name) => rel.Length == 0 ? name : rel + "\\" + name;
 }

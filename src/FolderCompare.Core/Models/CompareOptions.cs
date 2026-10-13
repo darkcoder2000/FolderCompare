@@ -1,3 +1,5 @@
+using FolderCompare.Core.Comparison;
+
 namespace FolderCompare.Core.Models;
 
 public enum SymlinkMode
@@ -29,4 +31,12 @@ public sealed record CompareOptions
     public string ExcludePatterns { get; init; } = "";
     public bool IgnoreHiddenAndSystem { get; init; }
     public ContentCompareMode ContentCompare { get; init; } = ContentCompareMode.Off;
+    /// <summary>
+    /// How names are matched. Null = decided per compare from the OS and the roots (see
+    /// <see cref="Comparison.PathComparison.ForRoots"/>); the result's options always carry the resolved value.
+    /// </summary>
+    public PathComparison? PathComparison { get; init; }
+
+    /// <summary>The effective name comparison.</summary>
+    public PathComparison Paths => PathComparison ?? Comparison.PathComparison.ForCurrentOS();
 }

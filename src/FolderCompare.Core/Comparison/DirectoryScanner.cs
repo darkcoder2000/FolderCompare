@@ -32,7 +32,7 @@ internal sealed class DirectoryScanner
         var info = _fs.DirectoryInfo.New(root);
         var entry = new ScanEntry { Name = "", Snapshot = Snapshot(info, root, 0) };
         var ctx = new Context(options, new PathPatternMatcher(options.IncludePatterns, options.ExcludePatterns), tracker, ct);
-        var ancestors = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Key(root) };
+        var ancestors = new HashSet<string>(options.Paths.Comparer) { Key(root) };
         Fill(entry, root, root, "", ctx, ancestors, 0);
         return entry;
     }
@@ -54,7 +54,7 @@ internal sealed class DirectoryScanner
             {
                 string enumPath = full;
                 if (isLink && !TryResolve(info, entry, out enumPath)) return entry;
-                var ancestors = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Key(root), Key(enumPath) };
+                var ancestors = new HashSet<string>(options.Paths.Comparer) { Key(root), Key(enumPath) };
                 Fill(entry, enumPath, full, relativePath, ctx, ancestors, 0);
             }
             return entry;
@@ -92,7 +92,7 @@ internal sealed class DirectoryScanner
     {
         ctx.Ct.ThrowIfCancellationRequested();
         ctx.Tracker?.Folder(fullPath);
-        var children = new Dictionary<string, ScanEntry>(StringComparer.OrdinalIgnoreCase);
+        var children = new Dictionary<string, ScanEntry>(ctx.Options.Paths.Comparer);
         entry.Children = children;
 
         IEnumerator<IFileSystemInfo> e;
@@ -133,7 +133,7 @@ internal sealed class DirectoryScanner
                                  HashSet<string> ancestors, int depth)
     {
         string name = info.Name;
-        string childRel = rel.Length == 0 ? name : rel + "\\" + name;
+        string childRel = DiffNode.JoinRelative(rel, name);
         string childFull = _fs.Path.Join(fullPath, name);
 
         FileAttributes attrs;

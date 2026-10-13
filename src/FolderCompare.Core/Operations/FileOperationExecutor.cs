@@ -165,7 +165,7 @@ public sealed class FileOperationExecutor
         }
 
         var directory = _fs.Path.GetDirectoryName(target)!;
-        if (!string.Equals(_fs.Path.TrimEndingDirectorySeparator(directory), SafetyValidator.Normalize(_fs, targetRoot), StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(_fs.Path.TrimEndingDirectorySeparator(directory), SafetyValidator.Normalize(_fs, targetRoot), StringComparison.Ordinal))
             SafetyValidator.EnsureInsideRoot(_fs, targetRoot, directory);
         _fs.Directory.CreateDirectory(directory);
 
@@ -177,13 +177,16 @@ public sealed class FileOperationExecutor
         {
             await CopyContentAsync(source, temp, sourceInfo.Length, fileProgress, ct).ConfigureAwait(false);
             _fs.File.SetLastWriteTimeUtc(temp, sourceInfo.LastWriteTimeUtc);
-            try
+            if (!OperatingSystem.IsLinux()) // Linux can't set the birth time
             {
-                _fs.File.SetCreationTimeUtc(temp, sourceInfo.CreationTimeUtc);
-            }
-            catch (Exception ex) when (IsItemError(ex))
-            {
-                // Creation time is best effort.
+                try
+                {
+                    _fs.File.SetCreationTimeUtc(temp, sourceInfo.CreationTimeUtc);
+                }
+                catch (Exception ex) when (IsItemError(ex))
+                {
+                    // Creation time is best effort.
+                }
             }
 
             if (_fs.File.Exists(target))
@@ -202,6 +205,9 @@ public sealed class FileOperationExecutor
 
         var wanted = sourceInfo.Attributes & CopiedAttributes;
         if (wanted != 0) _fs.File.SetAttributes(target, wanted);
+        // On Unix "read-only" is only a view of the permission bits; copy the exact mode last so it wins.
+        // Read through IFile: IFileInfo.UnixFileMode is not filled in by System.IO.Abstractions.
+        if (!OperatingSystem.IsWindows()) _fs.File.SetUnixFileMode(target, _fs.File.GetUnixFileMode(source));
 
         // Verify the result.
         var check = _fs.FileInfo.New(target);
@@ -211,6 +217,13 @@ public sealed class FileOperationExecutor
             return new OperationItemResult(action, ItemOutcome.Failed, $"Verification failed: size {check.Length} differs from source size {sourceInfo.Length}.", target);
         if ((check.LastWriteTimeUtc - sourceInfo.LastWriteTimeUtc).Duration() > options.Tolerance)
             return new OperationItemResult(action, ItemOutcome.Failed, "Verification failed: timestamp was not preserved.", target);
+        if (!OperatingSystem.IsWindows())
+        {
+            var sourceMode = _fs.File.GetUnixFileMode(source);
+            var targetMode = _fs.File.GetUnixFileMode(target);
+            if (targetMode != sourceMode)
+                return new OperationItemResult(action, ItemOutcome.Failed, $"Verification failed: permissions {targetMode} differ from the source ({sourceMode}).", target);
+        }
 
         return new OperationItemResult(action, ItemOutcome.Succeeded, null, target);
     }

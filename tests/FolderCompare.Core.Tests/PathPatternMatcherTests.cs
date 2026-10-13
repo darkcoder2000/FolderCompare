@@ -21,7 +21,7 @@ public class PathPatternMatcherTests
     [InlineData("a+b(1).txt", "a+b(1).txt", "a+b(1).txt", true)]
     [InlineData("", "anything", "anything", false)]
     public void Exclude(string patterns, string name, string rel, bool excluded) =>
-        Assert.Equal(excluded, new PathPatternMatcher(null, patterns).IsExcluded(name, rel));
+        Assert.Equal(excluded, new PathPatternMatcher(null, patterns).IsExcluded(name, TestFs.P(rel)));
 
     [Fact]
     public void EmptyInclude_IncludesEverything() =>
@@ -32,7 +32,7 @@ public class PathPatternMatcherTests
     {
         var m = new PathPatternMatcher("*.cs;*.xaml", null);
         Assert.True(m.IsIncludedFile("A.CS", "A.CS"));
-        Assert.True(m.IsIncludedFile("Main.xaml", @"v\Main.xaml"));
+        Assert.True(m.IsIncludedFile("Main.xaml", TestFs.P(@"v\Main.xaml")));
         Assert.False(m.IsIncludedFile("readme.md", "readme.md"));
     }
 }

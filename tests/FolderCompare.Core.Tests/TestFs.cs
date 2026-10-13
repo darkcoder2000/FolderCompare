@@ -6,9 +6,13 @@ namespace FolderCompare.Core.Tests;
 
 internal static class TestFs
 {
-    public const string L = @"C:\left";
-    public const string R = @"C:\right";
+    public static readonly string L = P(@"C:\left");
+    public static readonly string R = P(@"C:\right");
     public static readonly DateTime T0 = new(2024, 5, 1, 12, 0, 0, DateTimeKind.Utc);
+
+    /// <summary>Tests are written with Windows paths; on Linux/macOS they map to native ones (C:\x\y -> /x/y).</summary>
+    public static string P(string path) =>
+        OperatingSystem.IsWindows() ? path : path.Replace(@"C:\", "/").Replace('\\', '/');
 
     public static MockFileSystem Create()
     {
