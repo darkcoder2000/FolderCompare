@@ -57,7 +57,7 @@ public partial class App : Application
         services.AddLogging(b => b.AddSerilog(dispose: true));
         services.AddSingleton<IFileSystem, FileSystem>();
         services.AddSingleton<DiffEngine>();
-        services.AddSingleton(CreateRecycleBin);
+        services.AddSingleton(sp => RecycleBins.ForCurrentOS(sp.GetRequiredService<IFileSystem>(), sp.GetRequiredService<ILoggerFactory>()));
         services.AddSingleton<FileOperationExecutor>();
         services.AddSingleton<SettingsService>();
         services.AddSingleton<IDialogService, DialogService>();
@@ -97,12 +97,6 @@ public partial class App : Application
             error.Closed += (_, _) => desktop.Shutdown(1);
             desktop.MainWindow = error;
         }
-    }
-
-    private static IRecycleBin CreateRecycleBin(IServiceProvider sp)
-    {
-        if (OperatingSystem.IsWindows()) return new WindowsRecycleBin();
-        return new UnavailableRecycleBin();
     }
 
     /// <summary>Two files on the command line (e.g. Explorer "Compare Files"): only the text compare window opens.</summary>

@@ -99,6 +99,25 @@ public sealed class RealFileSystemTests : IDisposable
     }
 
     [Fact]
+    public void FreedesktopTrash_OnLinux_MovesFileAndWritesInfo()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        var file = Path.Combine(Left, "trash me.txt");
+        File.WriteAllText(file, "bye");
+        var homeTrash = Path.Combine(_root, "Trash");
+        var trash = new FreedesktopTrash(_fs, homeTrash, "1000",
+                                         p => FreedesktopTrash.MountPointOf(p, File.ReadAllLines("/proc/self/mountinfo")));
+
+        Assert.True(trash.CanRecycle(file));
+        trash.DeleteFile(file);
+
+        Assert.False(File.Exists(file));
+        Assert.Equal("bye", File.ReadAllText(Path.Combine(homeTrash, "files", "trash me.txt")));
+        var info = File.ReadAllText(Path.Combine(homeTrash, "info", "trash me.txt.trashinfo"));
+        Assert.Contains("Path=" + FreedesktopTrash.Encode(file), info);
+    }
+
+    [Fact]
     public async Task CaseOnlyNames_OnLinux_AreSeparateFiles()
     {
         if (!OperatingSystem.IsLinux()) return;

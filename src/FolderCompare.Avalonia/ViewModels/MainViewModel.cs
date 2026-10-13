@@ -44,6 +44,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IFileSystem _fs;
     private readonly DiffEngine _engine;
     private readonly FileOperationExecutor _executor;
+    private readonly IRecycleBin _recycleBin;
     private readonly SettingsService _settingsService;
     private readonly IDialogService _dialogs;
     private readonly IShellService _shell;
@@ -63,13 +64,14 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _suppressProfileApply;
     private readonly DispatcherTimer _searchTimer;
 
-    public MainViewModel(IFileSystem fs, DiffEngine engine, FileOperationExecutor executor, SettingsService settingsService,
+    public MainViewModel(IFileSystem fs, DiffEngine engine, FileOperationExecutor executor, IRecycleBin recycleBin, SettingsService settingsService,
                          IDialogService dialogs, IShellService shell, ITextCompareLauncher textCompare,
                          IExplorerIntegrationService explorer, ILogger<MainViewModel> logger)
     {
         _fs = fs;
         _engine = engine;
         _executor = executor;
+        _recycleBin = recycleBin;
         _settingsService = settingsService;
         _dialogs = dialogs;
         _shell = shell;
@@ -771,6 +773,19 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         bool recycle = Settings.DeleteToRecycleBin;
+        if (recycle)
+        {
+            // E.g. a Linux drive without a trash folder: never fall back to deleting permanently without asking.
+            var stuck = plan.Actions.Where(a => !_recycleBin.CanRecycle(a.TargetPath)).ToList();
+            if (stuck.Count > 0)
+            {
+                if (!await _dialogs.ConfirmAsync($"Move to {_shell.TrashName}",
+                        $"{stuck.Count:N0} item(s) can't be moved to the {_shell.TrashName} (there is no {_shell.TrashName} on that drive), e.g.\n" +
+                        $"{stuck[0].TargetPath}\n\nDelete the selection permanently instead?", warning: true))
+                    return;
+                recycle = false;
+            }
+        }
         if (!recycle || Settings.ConfirmRecycleDelete)
         {
             var title = recycle ? $"Move to {_shell.TrashName}" : "Delete permanently";
@@ -786,10 +801,10 @@ public sealed partial class MainViewModel : ObservableObject
                 $"Permanently delete {plan.Actions.Count:N0} item(s) ({RowViewModel.FormatSize(plan.TotalBytes)})?\n\nThis cannot be undone.", warning: true))
             return;
 
-        await ExecuteAsync("Delete", plan, nodes);
+        await ExecuteAsync("Delete", plan, nodes, recycle);
     }
 
-    private async Task ExecuteAsync(string title, OperationPlan plan, List<DiffNode> selection)
+    private async Task ExecuteAsync(string title, OperationPlan plan, List<DiffNode> selection, bool deleteToRecycleBin = true)
     {
         if (_result is null) return;
         var result = _result;
@@ -804,7 +819,7 @@ public sealed partial class MainViewModel : ObservableObject
             RightRoot = result.RightRoot,
             Tolerance = result.Options.Tolerance,
             OverwritePolicy = Settings.OverwritePolicy,
-            DeleteToRecycleBin = Settings.DeleteToRecycleBin,
+            DeleteToRecycleBin = deleteToRecycleBin && Settings.DeleteToRecycleBin,
         };
         var progress = new Progress<OperationProgress>(p =>
         {

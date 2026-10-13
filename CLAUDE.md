@@ -49,7 +49,10 @@ See README.md for features, shortcuts and layout. This file holds working knowle
 - Copies write to `<name>.tmpcopy` then rename; preserve and verify timestamp/size/attributes, on Unix also the
   file mode (read it with `IFile.GetUnixFileMode` – `IFileInfo.UnixFileMode` is never filled by the wrapper).
   Creation time is only set off Linux.
-- Delete goes to the Recycle Bin by default; overwriting a newer file always asks.
+- Delete goes to the Recycle Bin / Trash by default (Windows: VisualBasic `FileSystem`, macOS: `NSFileManager
+  trashItemAtURL` via the ObjC runtime, Linux: `FreedesktopTrash` in Core – home trash or `$topdir/.Trash-$uid`, with
+  `.trashinfo`). When `IRecycleBin.CanRecycle` is false the VM asks before deleting permanently; never fall back
+  silently. Overwriting a newer file always asks.
 - Log every file operation (Serilog).
 
 ## Text compare (src/FolderCompare.Core/TextDiff, src/FolderCompare.*/Views/TextCompare)
