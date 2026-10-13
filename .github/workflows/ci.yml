@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Windows builds everything, including the WPF app and the native Explorer extension (MSVC is on the runner).
+      - name: Build (Windows, full solution)
+        if: runner.os == 'Windows'
+        run: dotnet build FolderCompare.sln -c Release
+
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
+        run: dotnet test FolderCompare.sln -c Release --no-build
+
+      - name: Test Core (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: dotnet test tests/FolderCompare.Core.Tests -c Release
