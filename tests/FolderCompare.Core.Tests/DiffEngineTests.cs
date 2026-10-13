@@ -32,14 +32,108 @@ public class DiffEngineTests
     }
 
     [Fact]
-    public void SizeIsNotUsedForComparison()
+    public void SameTimeDifferentSize_IsDetectedWithoutContentCompare()
     {
         var fs = Create();
-        fs.AddFile($@"{L}\a.txt", T0, "short");
+        fs.AddFile($@"{L}\d\a.txt", T0, "short");
+        fs.AddFile($@"{R}\d\a.txt", T0, "a much longer content");
+        var r = fs.Compare();
+        Assert.Equal(DiffStatus.SameTimeDifferentContent, r.Find(@"d\a.txt").Status);
+        Assert.Equal(DiffStatus.Differs, r.Find("d").Status);
+        Assert.Equal(DiffStatus.Differs, r.Root.Status);
+    }
+
+    [Fact]
+    public void DifferentTimeDifferentSize_KeepsDirection()
+    {
+        var fs = Create();
+        fs.AddFile($@"{L}\a.txt", T0.AddMinutes(5), "short");
         fs.AddFile($@"{R}\a.txt", T0, "a much longer content");
-        var node = fs.Compare().Find("a.txt");
-        Assert.Equal(DiffStatus.Identical, node.Status);
-        Assert.NotEqual(node.Left!.Size, node.Right!.Size);
+        Assert.Equal(DiffStatus.NewerLeft, fs.Compare().Find("a.txt").Status);
+    }
+
+    [Fact]
+    public void ContentCompare_SameTimeSameSizeDifferentContent()
+    {
+        var fs = Create();
+        fs.AddFile($@"{L}\d\a.txt", T0, "abc");
+        fs.AddFile($@"{R}\d\a.txt", T0, "xyz");
+        fs.AddFile($@"{L}\d\b.txt", T0, "same");
+        fs.AddFile($@"{R}\d\b.txt", T0, "same");
+
+        Assert.Equal(DiffStatus.Identical, fs.Compare().Find(@"d\a.txt").Status);
+
+        var r = fs.Compare(new CompareOptions { ContentCompare = ContentCompareMode.WhenTimestampsEqual });
+        Assert.Equal(DiffStatus.SameTimeDifferentContent, r.Find(@"d\a.txt").Status);
+        Assert.Equal(DiffStatus.Identical, r.Find(@"d\b.txt").Status);
+        Assert.Equal(DiffStatus.Differs, r.Find("d").Status);
+        Assert.Equal(DiffStatus.Differs, r.Root.Status);
+    }
+
+    [Fact]
+    public void ContentCompare_TimeOnlyDifferences_RollUpAsIdentical()
+    {
+        var fs = Create();
+        fs.AddFile($@"{L}\d\a.txt", T0.AddDays(1), "abc");
+        fs.AddFile($@"{R}\d\a.txt", T0, "abc");
+        fs.AddFile($@"{L}\d\b.txt", T0, "same");
+        fs.AddFile($@"{R}\d\b.txt", T0, "same");
+
+        var r = fs.Compare(new CompareOptions { ContentCompare = ContentCompareMode.WhenSizesEqual });
+
+        Assert.Equal(DiffStatus.SameContentDifferentTime, r.Find(@"d\a.txt").Status);
+        Assert.Equal(DiffStatus.Identical, r.Find("d").Status);
+        Assert.Equal(DiffStatus.Identical, r.Root.Status);
+    }
+
+    [Fact]
+    public void ContentCompare_LockedFile_IsErrorWithMessage()
+    {
+        var fs = Create();
+        fs.AddFile($@"{L}\a.txt", T0, "abc");
+        fs.AddFile($@"{R}\a.txt", T0, "abc");
+        fs.GetFile($@"{R}\a.txt").AllowedFileShare = FileShare.None;
+
+        var node = fs.Compare(new CompareOptions { ContentCompare = ContentCompareMode.WhenTimestampsEqual }).Find("a.txt");
+
+        Assert.Equal(DiffStatus.Error, node.Status);
+        Assert.StartsWith("Content compare failed:", node.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ContentCompare_ReportsBytes()
+    {
+        var fs = Create();
+        fs.AddFile($@"{L}\a.txt", T0, "abcd");
+        fs.AddFile($@"{R}\a.txt", T0, "abcd");
+        fs.AddFile($@"{L}\b.txt", T0, "123456");
+        fs.AddFile($@"{R}\b.txt", T0, "654321");
+        var reports = new List<ScanProgress>();
+        var options = new CompareOptions { ContentCompare = ContentCompareMode.WhenTimestampsEqual };
+
+        await new DiffEngine(fs).CompareAsync(L, R, options, new SyncProgress<ScanProgress>(reports.Add));
+
+        Assert.Contains(reports, p => p.BytesTotal == 10);
+        Assert.Equal(4, reports.Last().ItemsScanned);
+    }
+
+    [Fact]
+    public void Refresh_AppliesContentCompare()
+    {
+        var fs = Create();
+        fs.AddFile($@"{L}\d\a.txt", T0, "abc");
+        fs.AddFile($@"{R}\d\a.txt", T0, "abc");
+        var r = fs.Compare(new CompareOptions { ContentCompare = ContentCompareMode.WhenTimestampsEqual });
+        Assert.Equal(DiffStatus.Identical, r.Root.Status);
+
+        fs.File.WriteAllText($@"{R}\d\a.txt", "xyz");
+        fs.File.SetLastWriteTimeUtc($@"{R}\d\a.txt", T0);
+        var node = r.Find(@"d\a.txt");
+        DiffEngine.ApplyRefresh(new DiffEngine(fs).PrepareRefresh(r, node.Parent!, node.Name));
+
+        Assert.Equal(DiffStatus.SameTimeDifferentContent, r.Find(@"d\a.txt").Status);
+        Assert.Equal(DiffStatus.Differs, r.Find("d").Status);
+        Assert.Equal(DiffStatus.Differs, r.Root.Status);
     }
 
     [Theory]

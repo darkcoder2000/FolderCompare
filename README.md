@@ -7,8 +7,9 @@ A fast, portable, safety-first folder comparison tool for Windows.
 ![.NET 8](https://img.shields.io/badge/.NET-8-512BD4)
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D6)
 
-FolderCompare compares two directory trees **by last-write timestamp only**, shows the result side by side, and lets
-you copy, delete or rename items from a right-click menu or the keyboard.
+FolderCompare compares two directory trees **by last-write timestamp and size** (with optional byte-by-byte
+verification), shows the result side by side, and lets you copy, delete or rename items from a right-click menu or
+the keyboard.
 
 ![FolderCompare main window](docs/images/MainWindow.png)
 
@@ -22,7 +23,8 @@ and run it. It's a single file for Windows x64, with no installer, no admin righ
 ## Why FolderCompare?
 
 * **Portable single exe.** Nothing to install, no admin rights, no .NET runtime.
-* **Fast on large trees.** It compares timestamps only and never reads file contents during a scan.
+* **Fast on large trees.** By default it compares timestamps and sizes and never reads file contents. Content
+  verification is optional and only reads the files that need it.
 * **Timestamp tolerance.** Configurable tolerance (default 2 s) and an optional 1-hour DST tolerance for NTFS vs.
   FAT/exFAT/NAS copies.
 * **Safety-first file operations.** Copies use a temp file and rename, targets are checked against the root, deletes
@@ -40,10 +42,11 @@ and run it. It's a single file for Windows x64, with no installer, no admin righ
 ### Command line
 
 ```
-FolderCompare.exe "C:\A" "D:\B" [--compare] [--no-recursive]
+FolderCompare.exe "C:\A" "D:\B" [--compare] [--no-recursive] [--content off|equal-time|equal-size]
 ```
 
 `--compare` starts the comparison immediately. `--no-recursive` compares only the top level for this session.
+`--content` overrides the content verification mode for this session (see [How it compares](#how-it-compares)).
 
 ### Explorer context menu
 
@@ -68,10 +71,28 @@ Shift+F10). The integration requires 64-bit Windows on x64.
 
 ## How it compares
 
-* Files: last write time (UTC). Within the tolerance (default 2 s) they count as identical. Optionally, a
-  difference of exactly 1 hour (± tolerance) is ignored (DST). Size is shown but not compared.
-* Statuses: only left, only right, newer left, newer right, identical, type conflict (file vs. folder), error.
-* Folders roll up: `=` only when everything inside is identical, otherwise `≠` (folder icon gets an orange dot).
+* Files: last write time (UTC) and size. Timestamps within the tolerance (default 2 s) count as the same time.
+  Optionally, a difference of exactly 1 hour (± tolerance) is also treated as the same time (DST).
+* Size is always compared. Files with the same time but a different size are marked **same time, different
+  content** (`⚠`, orange). Neither side is called newer, because there is no way to tell.
+* Content verification (*Settings → Verify file contents*, off by default) reads both files byte by byte after the
+  scan, two pairs at a time, and stops at the first difference:
+  * *Off (fast)*: timestamp and size only.
+  * *Verify files that look identical*: same time and size are checked. If the bytes differ, the file becomes
+    *same time, different content*.
+  * *Verify all same-size files*: files with different times but the same size are checked too. If the bytes are
+    equal, the file is marked **timestamp only** (`=`, tooltip "Content identical, timestamps differ") and counts
+    as identical for its folder.
+  * A file that can't be read during verification is marked as an error, and the scan continues.
+* Statuses: only left, only right, newer left, newer right, identical, same time / different content, timestamp
+  only, type conflict (file vs. folder), error.
+* Folders roll up: `=` only when everything inside is identical (or timestamp only), otherwise `≠` (folder icon gets
+  an orange dot). Folder timestamps are never compared.
+* Copying never guesses a direction for *same time, different content*: you are always asked, even with the
+  *Overwrite* or *Overwrite if newer* policy. *Timestamp only* files aren't copied, because their content is already
+  equal. Their timestamps are left as they are.
+* Known limitation: with verification off, a change that keeps the size and the timestamp (within the tolerance,
+  or exactly 1 hour apart with the DST option) is not detected. Turn on verification when that matters.
 * Paths match case-insensitively. Long paths and Unicode are supported. Unreadable folders are marked as errors
   and the scan continues.
 * Symbolic links and junctions are skipped by default. If you choose *Follow*, loops are detected.
@@ -169,7 +190,7 @@ docs/MANUAL_TESTS.md           manual test checklist
 
 ## Comparison with other tools
 
-FolderCompare does one thing: quick timestamp-based folder comparison with safe copy and delete. The tools below are
+FolderCompare does one thing: quick date-and-size folder comparison with safe copy and delete. The tools below are
 mature and do much more. This table is to the best of our knowledge; please check each project's website for
 current details.
 
@@ -177,7 +198,7 @@ current details.
 |---|---|---|---|---|
 | License | Free, MIT | Free, GPL | Commercial | Free, GPL |
 | Platforms | Windows | Windows | Windows, macOS, Linux | Windows, macOS, Linux |
-| Folder comparison | Timestamp only | Contents, size, date | Contents, size, date | Date and size, or contents |
+| Folder comparison | Date and size, optional contents | Contents, size, date | Contents, size, date | Date and size, or contents |
 | Text diff | Yes, two-way | Yes, two- and three-way | Yes, two- and three-way | No |
 | Focus | Quick comparison, manual copy | Diff and merge | Diff and merge | Folder synchronization |
 

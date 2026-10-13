@@ -28,6 +28,10 @@
             <DataTrigger Binding="{Binding LeftState}" Value="{x:Static vm:SideState.Error}">
                 <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
             </DataTrigger>
+            <DataTrigger Binding="{Binding LeftState}" Value="{x:Static vm:SideState.Conflict}">
+                <Setter Property="Foreground" Value="{DynamicResource ConflictBrush}" />
+                <Setter Property="FontWeight" Value="Bold" />
+            </DataTrigger>
         </Style.Triggers>
     </Style>
 
@@ -45,6 +49,10 @@
             </DataTrigger>
             <DataTrigger Binding="{Binding RightState}" Value="{x:Static vm:SideState.Error}">
                 <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding RightState}" Value="{x:Static vm:SideState.Conflict}">
+                <Setter Property="Foreground" Value="{DynamicResource ConflictBrush}" />
+                <Setter Property="FontWeight" Value="Bold" />
             </DataTrigger>
         </Style.Triggers>
     </Style>

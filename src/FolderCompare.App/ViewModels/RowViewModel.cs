@@ -13,6 +13,8 @@ public enum SideState
     Older,
     Only,
     Error,
+    /// <summary>Same timestamp but different content: neither side can be called newer.</summary>
+    Conflict,
 }
 
 /// <summary>One visible row of the side-by-side tree grid; wraps a <see cref="DiffNode"/>.</summary>
@@ -68,13 +70,18 @@ public sealed class RowViewModel : ObservableObject
     public SideState LeftState => State(Side.Left);
     public SideState RightState => State(Side.Right);
     public bool ShowDiffMarker => Node.IsDirectory && Node.Status == DiffStatus.Differs;
-    public string? ToolTip => Node.ErrorMessage;
+    public string? ToolTip => Node.ErrorMessage ?? Node.Status switch
+    {
+        DiffStatus.SameTimeDifferentContent => "Same timestamp but different size or content - can't tell which side is newer",
+        DiffStatus.SameContentDifferentTime => "Content identical, timestamps differ",
+        _ => null,
+    };
 
     public string Glyph => Node.Status switch
     {
         DiffStatus.NewerLeft or DiffStatus.OnlyLeft => "→",
         DiffStatus.NewerRight or DiffStatus.OnlyRight => "←",
-        DiffStatus.Identical => "=",
+        DiffStatus.Identical or DiffStatus.SameContentDifferentTime => "=",
         DiffStatus.Differs => "≠",
         _ => "⚠",
     };
@@ -99,6 +106,7 @@ public sealed class RowViewModel : ObservableObject
             DiffStatus.OnlyLeft or DiffStatus.OnlyRight => SideState.Only,
             DiffStatus.NewerLeft => side == Side.Left ? SideState.Newer : SideState.Older,
             DiffStatus.NewerRight => side == Side.Right ? SideState.Newer : SideState.Older,
+            DiffStatus.SameTimeDifferentContent => SideState.Conflict,
             _ => SideState.Normal,
         };
     }

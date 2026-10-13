@@ -5,6 +5,7 @@
     <SolidColorBrush x:Key="OlderBrush" Color="#7A7A7A" />
     <SolidColorBrush x:Key="OnlyBrush" Color="#1F5FBF" />
     <SolidColorBrush x:Key="ErrorBrush" Color="#C42B1C" />
+    <SolidColorBrush x:Key="ConflictBrush" Color="#B35C00" />
     <SolidColorBrush x:Key="DiffMarkerBrush" Color="#E07B00" />
     <SolidColorBrush x:Key="FolderIconBrush" Color="#C99400" />
     <SolidColorBrush x:Key="FileIconBrush" Color="#6B6B6B" />

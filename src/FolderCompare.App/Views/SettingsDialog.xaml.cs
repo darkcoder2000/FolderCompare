@@ -13,6 +13,12 @@ public partial class SettingsDialog : Window
         InitializeComponent();
         SymlinkCombo.ItemsSource = Enum.GetValues<SymlinkMode>();
         OverwriteCombo.ItemsSource = Enum.GetValues<OverwritePolicy>();
+        ContentCombo.ItemsSource = new Dictionary<ContentCompareMode, string>
+        {
+            [ContentCompareMode.Off] = "Off (fast)",
+            [ContentCompareMode.WhenTimestampsEqual] = "Verify files that look identical",
+            [ContentCompareMode.WhenSizesEqual] = "Verify all same-size files",
+        };
         DataContext = editable;
     }
 

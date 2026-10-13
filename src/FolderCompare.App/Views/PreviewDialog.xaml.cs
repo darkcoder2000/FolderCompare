@@ -23,11 +23,14 @@ public partial class PreviewDialog : Window
               (plan.Actions.Count > files ? $", {plan.Actions.Count - files:N0} folder(s) to create" : "");
 
         int newer = plan.Actions.Count(a => a.TargetIsNewer);
+        int unknown = plan.Actions.Count(a => a.DirectionUnknown);
         int overwrites = plan.Actions.Count(a => a.TargetExists && a.Kind == ActionKind.CopyFile);
         if (request.Permanent)
             ShowWarning("Items will be deleted permanently and cannot be restored from the Recycle Bin.");
         else if (newer > 0)
             ShowWarning($"{newer:N0} file(s) at the destination are NEWER than the source. Check the copy direction.");
+        else if (unknown > 0)
+            ShowWarning($"{unknown:N0} file(s) have the same timestamp but different content. You will be asked before each is overwritten.");
         else if (overwrites > 0)
             ShowWarning($"{overwrites:N0} existing file(s) at the destination will be overwritten (subject to the overwrite policy).");
 
@@ -61,8 +64,11 @@ public partial class PreviewDialog : Window
         a.SourcePath ?? "",
         a.TargetPath,
         a.Kind == ActionKind.CreateDirectory ? "" : RowViewModel.FormatSize(a.Size),
-        a.Kind != ActionKind.CopyFile || !a.TargetExists ? "" : a.TargetIsNewer ? "yes - destination is newer!" : "yes",
-        a.TargetIsNewer);
+        a.Kind != ActionKind.CopyFile || !a.TargetExists ? ""
+            : a.TargetIsNewer ? "yes - destination is newer!"
+            : a.DirectionUnknown ? "ask - same time, different content!"
+            : "yes",
+        a.TargetIsNewer || a.DirectionUnknown);
 
     public sealed record PreviewRow(string Action, string Source, string Target, string Size, string Overwrite, bool IsWarning);
 }

@@ -96,11 +96,17 @@
                     <TextBlock Text="Newer left" Foreground="{DynamicResource NewerBrush}" FontWeight="Bold" />
                 </ToggleButton>
                 <ToggleButton Style="{StaticResource FilterToggle}" IsChecked="{Binding ShowIdentical}" ToolTip="Show identical items" Content="Identical" />
+                <ToggleButton Style="{StaticResource FilterToggle}" IsChecked="{Binding ShowTimeOnly}" Content="Time only"
+                              ToolTip="Show files whose content was verified identical but whose timestamps differ" />
                 <ToggleButton Style="{StaticResource FilterToggle}" IsChecked="{Binding ShowNewerRight}" ToolTip="Show items that are newer on the right">
                     <TextBlock Text="Newer right" Foreground="{DynamicResource NewerBrush}" FontWeight="Bold" />
                 </ToggleButton>
                 <ToggleButton Style="{StaticResource FilterToggle}" IsChecked="{Binding ShowOnlyRight}" ToolTip="Show items that exist only on the right">
                     <TextBlock Text="Only right" Foreground="{DynamicResource OnlyBrush}" />
+                </ToggleButton>
+                <ToggleButton Style="{StaticResource FilterToggle}" IsChecked="{Binding ShowSameTimeDifferent}"
+                              ToolTip="Show files with the same timestamp but different size or content (direction unknown)">
+                    <TextBlock Text="Same time, different" Foreground="{DynamicResource ConflictBrush}" FontWeight="Bold" />
                 </ToggleButton>
                 <ToggleButton Style="{StaticResource FilterToggle}" IsChecked="{Binding ShowErrors}" ToolTip="Show errors and file/folder conflicts">
                     <TextBlock Text="Errors" Foreground="{DynamicResource ErrorBrush}" />
@@ -219,6 +225,7 @@
                     <MenuItem Header="Select all newer on right" Command="{Binding SelectByStatusCommand}" CommandParameter="NewerRight" />
                     <MenuItem Header="Select all only-left" Command="{Binding SelectByStatusCommand}" CommandParameter="OnlyLeft" />
                     <MenuItem Header="Select all only-right" Command="{Binding SelectByStatusCommand}" CommandParameter="OnlyRight" />
+                    <MenuItem Header="Select all same time, different content" Command="{Binding SelectByStatusCommand}" CommandParameter="SameTimeDifferentContent" />
                     <MenuItem Header="Invert selection" Command="{Binding InvertSelectionCommand}" />
                     <Separator />
                     <MenuItem Header="Expand subtree" Command="{Binding ExpandSubtreeCommand}" />

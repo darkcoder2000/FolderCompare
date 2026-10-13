@@ -11,6 +11,12 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Margin" Value="0,4,10,4" />
         </Style>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource OlderBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="20,0,0,4" />
+        </Style>
     </Window.Resources>
     <StackPanel Margin="14">
         <GroupBox Header="Comparison" Padding="8,4">
@@ -27,19 +33,32 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock Style="{StaticResource Label}" Text="Timestamp _tolerance (seconds):" />
                 <TextBox Grid.Column="1" Width="80" HorizontalAlignment="Left" Margin="0,4"
                          Text="{Binding ToleranceSeconds, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" />
-                <CheckBox Grid.Row="1" Grid.ColumnSpan="2" Content="Ignore exactly ±1 hour differences (_DST / time zone)" IsChecked="{Binding IgnoreDstOffset}" />
-                <TextBlock Grid.Row="2" Style="{StaticResource Label}" Text="Symbolic links / junctions:" />
-                <ComboBox Grid.Row="2" Grid.Column="1" x:Name="SymlinkCombo" Width="120" HorizontalAlignment="Left" Margin="0,4" SelectedItem="{Binding SymlinkMode}" />
-                <CheckBox Grid.Row="3" Grid.ColumnSpan="2" Content="Ignore _hidden and system files" IsChecked="{Binding IgnoreHiddenAndSystem}" />
-                <CheckBox Grid.Row="4" Grid.ColumnSpan="2" Content="Compare sub_folders (recursive)" IsChecked="{Binding Recursive}" />
-                <TextBlock Grid.Row="5" Style="{StaticResource Label}" Text="_Exclude patterns:" />
-                <TextBox Grid.Row="5" Grid.Column="1" Margin="0,4" Text="{Binding ExcludePatterns}" ToolTip="e.g. *.tmp;.git;node_modules;bin;obj" />
-                <TextBlock Grid.Row="6" Style="{StaticResource Label}" Text="_Include patterns:" />
-                <TextBox Grid.Row="6" Grid.Column="1" Margin="0,4" Text="{Binding IncludePatterns}" ToolTip="Empty = all files" />
+                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource Hint}"
+                           Text="Files saved within this window on both sides are treated as same-time; real changes in that window can be missed unless content verification is on." />
+                <CheckBox Grid.Row="2" Grid.ColumnSpan="2" Content="Ignore exactly ±1 hour differences (_DST / time zone)" IsChecked="{Binding IgnoreDstOffset}" />
+                <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Style="{StaticResource Hint}"
+                           Text="A real change exactly 1 hour apart will be treated as same-time." />
+                <TextBlock Grid.Row="4" Style="{StaticResource Label}" Text="Verify file _contents:" />
+                <ComboBox Grid.Row="4" Grid.Column="1" x:Name="ContentCombo" Width="240" HorizontalAlignment="Left" Margin="0,4"
+                          SelectedValuePath="Key" DisplayMemberPath="Value" SelectedValue="{Binding ContentCompare}" />
+                <TextBlock Grid.Row="5" Grid.ColumnSpan="2" Style="{StaticResource Hint}"
+                           Text="File size is always compared. Verification reads both files byte by byte after the scan, which takes longer for large folders." />
+                <TextBlock Grid.Row="6" Style="{StaticResource Label}" Text="Symbolic links / junctions:" />
+                <ComboBox Grid.Row="6" Grid.Column="1" x:Name="SymlinkCombo" Width="120" HorizontalAlignment="Left" Margin="0,4" SelectedItem="{Binding SymlinkMode}" />
+                <CheckBox Grid.Row="7" Grid.ColumnSpan="2" Content="Ignore _hidden and system files" IsChecked="{Binding IgnoreHiddenAndSystem}" />
+                <CheckBox Grid.Row="8" Grid.ColumnSpan="2" Content="Compare sub_folders (recursive)" IsChecked="{Binding Recursive}" />
+                <TextBlock Grid.Row="9" Style="{StaticResource Label}" Text="_Exclude patterns:" />
+                <TextBox Grid.Row="9" Grid.Column="1" Margin="0,4" Text="{Binding ExcludePatterns}" ToolTip="e.g. *.tmp;.git;node_modules;bin;obj" />
+                <TextBlock Grid.Row="10" Style="{StaticResource Label}" Text="_Include patterns:" />
+                <TextBox Grid.Row="10" Grid.Column="1" Margin="0,4" Text="{Binding IncludePatterns}" ToolTip="Empty = all files" />
             </Grid>
         </GroupBox>
 

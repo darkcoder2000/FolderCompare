@@ -11,4 +11,8 @@ public enum DiffStatus
     Differs,
     TypeConflict,
     Error,
+    /// <summary>Same timestamp (within tolerance) but size or content differs. Direction is unknown.</summary>
+    SameTimeDifferentContent,
+    /// <summary>Content verified identical, only the timestamp differs.</summary>
+    SameContentDifferentTime,
 }

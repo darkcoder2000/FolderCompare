@@ -13,6 +13,8 @@ internal sealed class ProgressTracker
     private long _items;
     private long _lastReport;
     private volatile string _currentFolder = "";
+    private long _bytesCompared;
+    private long _bytesTotal;
 
     public ProgressTracker(IProgress<ScanProgress>? progress) => _progress = progress;
 
@@ -30,6 +32,26 @@ internal sealed class ProgressTracker
         MaybeReport();
     }
 
+    /// <summary>Switches to the content verification phase.</summary>
+    public void BeginContent(long totalBytes)
+    {
+        Interlocked.Exchange(ref _bytesTotal, totalBytes);
+        _currentFolder = "";
+        _progress?.Report(new ScanProgress(Items, "", 0, totalBytes));
+    }
+
+    public void ContentFile(string path)
+    {
+        _currentFolder = path;
+        MaybeReport();
+    }
+
+    public void ContentBytes(long bytes)
+    {
+        Interlocked.Add(ref _bytesCompared, bytes);
+        MaybeReport();
+    }
+
     public void ReportFinal() => _progress?.Report(new ScanProgress(Items, ""));
 
     private void MaybeReport()
@@ -42,6 +64,6 @@ internal sealed class ProgressTracker
             if (now - _lastReport < IntervalTicks) return;
             Interlocked.Exchange(ref _lastReport, now);
         }
-        _progress.Report(new ScanProgress(Items, _currentFolder));
+        _progress.Report(new ScanProgress(Items, _currentFolder, Interlocked.Read(ref _bytesCompared), Interlocked.Read(ref _bytesTotal)));
     }
 }

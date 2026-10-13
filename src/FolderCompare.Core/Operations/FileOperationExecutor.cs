@@ -13,6 +13,7 @@ namespace FolderCompare.Core.Operations;
 public sealed class FileOperationExecutor
 {
     public const string TempSuffix = ".tmpcopy";
+    private const string DirectionUnknownMessage = "Same timestamp but different content; direction unknown.";
     private const int BufferSize = 1 << 20;
     private const FileAttributes CopiedAttributes = FileAttributes.ReadOnly | FileAttributes.Hidden | FileAttributes.System | FileAttributes.Archive;
 
@@ -126,14 +127,18 @@ public sealed class FileOperationExecutor
         if (targetInfo.Exists)
         {
             bool targetNewer = TimestampComparer.IsNewer(targetInfo.LastWriteTimeUtc, sourceInfo.LastWriteTimeUtc, options.Tolerance);
+            bool unknown = action.DirectionUnknown;
             var choice = ToChoice(state.Policy);
+            // "Newer wins" cannot decide a same-time conflict; only skipping or keeping both is safe without asking.
             bool mustAsk = state.Policy == OverwritePolicy.Ask ||
-                           (targetNewer && choice == OverwriteChoice.Overwrite && !state.NewerOverwriteConfirmed);
+                           (targetNewer && choice == OverwriteChoice.Overwrite && !state.NewerOverwriteConfirmed) ||
+                           (unknown && choice is (OverwriteChoice.Overwrite or OverwriteChoice.OverwriteIfNewer) && !state.UnknownDirectionConfirmed);
             if (mustAsk)
             {
-                if (resolver is null) return new OperationItemResult(action, ItemOutcome.Skipped, "Destination exists.");
+                if (resolver is null)
+                    return new OperationItemResult(action, ItemOutcome.Skipped, unknown ? DirectionUnknownMessage : "Destination exists.");
                 var conflict = new OverwriteConflict(source, target, sourceInfo.Length, sourceInfo.LastWriteTimeUtc,
-                                                     targetInfo.Length, targetInfo.LastWriteTimeUtc, targetNewer);
+                                                     targetInfo.Length, targetInfo.LastWriteTimeUtc, targetNewer, unknown);
                 var decision = await resolver(conflict, ct).ConfigureAwait(false);
                 if (decision.Choice == OverwriteChoice.Cancel) throw new OperationCanceledException();
                 choice = decision.Choice;
@@ -141,6 +146,7 @@ public sealed class FileOperationExecutor
                 {
                     if (state.Policy == OverwritePolicy.Ask) state.Policy = ToPolicy(choice);
                     if (targetNewer && choice == OverwriteChoice.Overwrite) state.NewerOverwriteConfirmed = true;
+                    if (unknown && choice == OverwriteChoice.Overwrite) state.UnknownDirectionConfirmed = true;
                 }
             }
 
@@ -148,6 +154,8 @@ public sealed class FileOperationExecutor
             {
                 case OverwriteChoice.Skip:
                     return new OperationItemResult(action, ItemOutcome.Skipped, "Destination exists.");
+                case OverwriteChoice.OverwriteIfNewer when unknown:
+                    return new OperationItemResult(action, ItemOutcome.Skipped, DirectionUnknownMessage);
                 case OverwriteChoice.OverwriteIfNewer when !TimestampComparer.IsNewer(sourceInfo.LastWriteTimeUtc, targetInfo.LastWriteTimeUtc, options.Tolerance):
                     return new OperationItemResult(action, ItemOutcome.Skipped, "Destination is not older than the source.");
                 case OverwriteChoice.KeepBoth:
@@ -340,5 +348,6 @@ public sealed class FileOperationExecutor
     {
         public OverwritePolicy Policy { get; set; } = policy;
         public bool NewerOverwriteConfirmed { get; set; }
+        public bool UnknownDirectionConfirmed { get; set; }
     }
 }

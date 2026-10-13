@@ -172,6 +172,75 @@ public class FileOperationTests
     }
 
     [Fact]
+    public void SameTimeConflict_PlannerDoesNotPickDirection()
+    {
+        var fs = SameTimeConflictFs(out var r);
+        Assert.Equal(DiffStatus.SameTimeDifferentContent, r.Find("x.txt").Status);
+
+        foreach (var dir in new[] { CopyDirection.LeftToRight, CopyDirection.RightToLeft })
+        {
+            var plan = CopyPlan(r, "x.txt", dir);
+            var action = Assert.Single(plan.Actions);
+            Assert.True(action.DirectionUnknown);
+            Assert.False(action.TargetIsNewer);
+        }
+    }
+
+    [Theory]
+    [InlineData(OverwritePolicy.Overwrite)]
+    [InlineData(OverwritePolicy.OverwriteIfNewer)]
+    public void SameTimeConflict_IsNotOverwrittenWithoutAsking(OverwritePolicy policy)
+    {
+        var fs = SameTimeConflictFs(out var r);
+        var summary = Run(fs, CopyPlan(r, "x.txt"), Options(policy));
+        Assert.Equal(1, summary.Skipped);
+        Assert.Equal("right", fs.File.ReadAllText($@"{R}\x.txt"));
+    }
+
+    [Fact]
+    public void SameTimeConflict_AsksEvenWithOverwritePolicy()
+    {
+        var fs = SameTimeConflictFs(out var r);
+        OverwriteConflict? seen = null;
+        OverwriteResolver resolver = (c, _) =>
+        {
+            seen = c;
+            return Task.FromResult(new OverwriteDecision(OverwriteChoice.Overwrite, false));
+        };
+
+        var summary = Run(fs, CopyPlan(r, "x.txt"), Options(OverwritePolicy.Overwrite), resolver);
+
+        Assert.True(seen!.DirectionUnknown);
+        Assert.False(seen.TargetIsNewer);
+        Assert.Equal(1, summary.Succeeded);
+        Assert.Equal("left!", fs.File.ReadAllText($@"{R}\x.txt"));
+    }
+
+    [Fact]
+    public void SameTimeConflict_OverwriteIfNewerChoiceSkips()
+    {
+        var fs = SameTimeConflictFs(out var r);
+        OverwriteResolver resolver = (_, _) => Task.FromResult(new OverwriteDecision(OverwriteChoice.OverwriteIfNewer, false));
+        var summary = Run(fs, CopyPlan(r, "x.txt"), Options(OverwritePolicy.Ask), resolver);
+        Assert.Equal(1, summary.Skipped);
+        Assert.Equal("right", fs.File.ReadAllText($@"{R}\x.txt"));
+    }
+
+    [Fact]
+    public void SameContentDifferentTime_IsNotCopied()
+    {
+        var fs = Create();
+        fs.AddFile($@"{L}\x.txt", T0.AddHours(3), "same");
+        fs.AddFile($@"{R}\x.txt", T0, "same");
+        var r = fs.Compare(new CompareOptions { ContentCompare = ContentCompareMode.WhenSizesEqual });
+
+        var plan = CopyPlan(r, "x.txt");
+
+        Assert.Empty(plan.Actions);
+        Assert.Contains(plan.Notes, n => n.Contains("only the timestamps differ"));
+    }
+
+    [Fact]
     public void Overwrite_CancelFromResolverStopsQueue()
     {
         var fs = ConflictFs(out var r);
@@ -324,6 +393,15 @@ public class FileOperationTests
         fs.AddFile($@"{L}\x.txt", T0.AddHours(1), "new");
         fs.AddFile($@"{R}\x.txt", T0, "old");
         result = fs.Compare();
+        return fs;
+    }
+
+    private static MockFileSystem SameTimeConflictFs(out DiffResult result)
+    {
+        var fs = Create();
+        fs.AddFile($@"{L}\x.txt", T0, "left!");
+        fs.AddFile($@"{R}\x.txt", T0, "right");
+        result = fs.Compare(new CompareOptions { ContentCompare = ContentCompareMode.WhenTimestampsEqual });
         return fs;
     }
 

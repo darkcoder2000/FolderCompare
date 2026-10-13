@@ -14,6 +14,9 @@ F "$L\only-left.txt" $t0;          F "$R\only-right.txt" $t0
 F "$L\src\main.cs" $t0.AddMinutes(10); F "$R\src\main.cs" $t0
 F "$L\onlyleftdir\x.txt" $t0
 F "$L\conflict" $t0;               New-Item -ItemType Directory "$R\conflict" | Out-Null
+F "$L\content\same-time-size.txt" $t0 "short"; F "$R\content\same-time-size.txt" $t0 "much longer"
+F "$L\content\same-time-bytes.txt" $t0 "abc";  F "$R\content\same-time-bytes.txt" $t0 "xyz"
+F "$L\content\time-only.txt" $t0.AddHours(3) "same"; F "$R\content\time-only.txt" $t0 "same"
 ```
 
 ## Comparison
@@ -25,6 +28,18 @@ F "$L\conflict" $t0;               New-Item -ItemType Directory "$R\conflict" | 
 - [ ] Typing a folder that doesn't exist shows an inline message under the path box.
 - [ ] Dropping a folder from Explorer onto a path box fills it in. The dropdown lists recent paths.
 - [ ] ⇄ swaps the sides and rescans.
+
+## Size and content verification
+- [ ] Default (*Verify file contents: Off (fast)*): `content\same-time-size.txt` shows ⚠ with both sides in bold orange and no arrow. Its tooltip says the side that is newer can't be determined. `content\same-time-bytes.txt` shows `=` (known limitation), and `content\time-only.txt` shows newer left.
+- [ ] *Settings → Verify file contents → Verify files that look identical*, F5: `same-time-bytes.txt` becomes ⚠. `same.txt` stays `=`. The status bar shows "Verifying contents… n%" while it runs.
+- [ ] *Verify all same-size files*, F5: `time-only.txt` shows `=` with the tooltip "Content identical, timestamps differ", and if it is the only remaining difference the `content` folder isn't marked `≠`. (`newer-left.txt` and `newer-right.txt` also become timestamp only because they have the same content.)
+- [ ] The counts show "same time, different content" and "timestamp only". The *Same time, different* and *Time only* toggles hide and show those rows. *Differences only* hides timestamp-only rows.
+- [ ] Copying `same-time-size.txt` (either direction) shows the preview row "ask - same time, different content!", then the overwrite dialog with the orange same-timestamp warning and Skip as the default. This also happens when the overwrite policy is *Overwrite* or *OverwriteIfNewer*.
+- [ ] Copying `time-only.txt` shows "Nothing to copy." with the note that only the timestamps differ.
+- [ ] The settings dialog shows the hints under Tolerance and the DST checkbox, and the verification mode survives a restart and is saved in profiles.
+- [ ] `FolderCompare.exe "%TEMP%\td\left" "%TEMP%\td\right" --compare --content equal-size` verifies contents for that session only (the setting in the dialog is unchanged).
+- [ ] With a large folder pair and verification on, Esc during "Verifying contents" cancels the scan.
+- [ ] Ctrl+E report lists the new statuses by name.
 
 ## Filters and view
 - [ ] Each Show toggle hides or shows its category right away.

@@ -25,13 +25,22 @@ public sealed class RefreshData
 /// <summary>Scans both trees and merges them into a <see cref="DiffNode"/> tree. Never modifies the file system.</summary>
 public sealed class DiffEngine
 {
+    /// <summary>Content comparisons run in parallel; kept low because both trees may share one physical disk.</summary>
+    private const int ContentParallelism = 2;
+
     private readonly IFileSystem _fs;
     private readonly DirectoryScanner _scanner;
+    private readonly IContentComparer _content;
 
-    public DiffEngine(IFileSystem fs)
+    public DiffEngine(IFileSystem fs) : this(fs, new ByteContentComparer(fs))
+    {
+    }
+
+    public DiffEngine(IFileSystem fs, IContentComparer content)
     {
         _fs = fs;
         _scanner = new DirectoryScanner(fs);
+        _content = content;
     }
 
     public async Task<DiffResult> CompareAsync(string leftRoot, string rightRoot, CompareOptions options,
@@ -49,7 +58,28 @@ public sealed class DiffEngine
         var rightTask = Task.Run(() => _scanner.ScanRoot(rightRoot, options, tracker, ct), ct);
         await Task.WhenAll(leftTask, rightTask).ConfigureAwait(false);
 
-        var root = await Task.Run(() => Merge("", "", leftTask.Result, rightTask.Result, options), ct).ConfigureAwait(false);
+        var pending = new List<DiffNode>();
+        var root = await Task.Run(() => Merge("", "", leftTask.Result, rightTask.Result, options, pending), ct).ConfigureAwait(false);
+
+        if (pending.Count > 0)
+        {
+            tracker.BeginContent(pending.Sum(n => n.Left!.Size));
+            var parallel = new ParallelOptions { MaxDegreeOfParallelism = ContentParallelism, CancellationToken = ct };
+            await Parallel.ForEachAsync(pending, parallel, (node, token) =>
+            {
+                tracker.ContentFile(node.RelativePath);
+                long done = 0;
+                VerifyContent(node, options, token, n =>
+                {
+                    done += n;
+                    tracker.ContentBytes(n);
+                });
+                tracker.ContentBytes(node.Left!.Size - done); // files that differ stop early
+                return ValueTask.CompletedTask;
+            }).ConfigureAwait(false);
+            RollUpTree(root);
+        }
+
         tracker.ReportFinal();
         return new DiffResult(leftRoot, rightRoot, options, root);
     }
@@ -60,7 +90,13 @@ public sealed class DiffEngine
         var rel = parent.RelativePath.Length == 0 ? name : parent.RelativePath + "\\" + name;
         var left = _scanner.ScanPath(result.LeftRoot, rel, result.Options, ct);
         var right = _scanner.ScanPath(result.RightRoot, rel, result.Options, ct);
-        var fresh = left is null && right is null ? null : Merge(left?.Name ?? right!.Name, rel, left, right, result.Options);
+        var pending = new List<DiffNode>();
+        var fresh = left is null && right is null ? null : Merge(left?.Name ?? right!.Name, rel, left, right, result.Options, pending);
+        if (fresh is not null && pending.Count > 0)
+        {
+            foreach (var node in pending) VerifyContent(node, result.Options, ct, null);
+            RollUpTree(fresh);
+        }
 
         var ancestors = new List<(DiffNode, FileInfoSnapshot?, FileInfoSnapshot?)>();
         for (var a = parent; a is not null; a = a.Parent)
@@ -98,7 +134,12 @@ public sealed class DiffEngine
         }
     }
 
-    internal static DiffNode Merge(string name, string rel, ScanEntry? left, ScanEntry? right, CompareOptions options)
+    /// <summary>
+    /// Merges two scanned entries. File pairs get their size/timestamp status; pairs that also need a content check
+    /// are added to <paramref name="pending"/> (when null, content is never checked).
+    /// </summary>
+    internal static DiffNode Merge(string name, string rel, ScanEntry? left, ScanEntry? right, CompareOptions options,
+                                   List<DiffNode>? pending = null)
     {
         bool leftDir = left?.IsDirectory ?? false;
         bool rightDir = right?.IsDirectory ?? false;
@@ -131,9 +172,14 @@ public sealed class DiffEngine
         {
             node.LeftTotalSize = left?.Snapshot.Size ?? 0;
             node.RightTotalSize = right?.Snapshot.Size ?? 0;
-            node.Status = left is null ? DiffStatus.OnlyRight
-                : right is null ? DiffStatus.OnlyLeft
-                : TimestampComparer.Compare(left.Snapshot.LastWriteUtc, right.Snapshot.LastWriteUtc, options.Tolerance, options.IgnoreDstOffset);
+            if (left is null) node.Status = DiffStatus.OnlyRight;
+            else if (right is null) node.Status = DiffStatus.OnlyLeft;
+            else
+            {
+                node.Status = FileComparer.Compare(left.Snapshot, right.Snapshot, options, null, default).Status;
+                if (pending is not null && FileComparer.NeedsContentCheck(left.Snapshot, right.Snapshot, options))
+                    pending.Add(node);
+            }
             return node;
         }
 
@@ -143,7 +189,7 @@ public sealed class DiffEngine
             {
                 ScanEntry? r = null;
                 right?.Children?.TryGetValue(childName, out r);
-                AddChild(node, Merge(l.Name, Join(rel, l.Name), l, r, options));
+                AddChild(node, Merge(l.Name, Join(rel, l.Name), l, r, options, pending));
             }
         }
         if (right?.Children is not null)
@@ -151,7 +197,7 @@ public sealed class DiffEngine
             foreach (var (childName, r) in right.Children)
             {
                 if (left?.Children?.ContainsKey(childName) == true) continue;
-                AddChild(node, Merge(r.Name, Join(rel, r.Name), null, r, options));
+                AddChild(node, Merge(r.Name, Join(rel, r.Name), null, r, options, pending));
             }
         }
 
@@ -169,7 +215,7 @@ public sealed class DiffEngine
         {
             leftSize += c.LeftTotalSize;
             rightSize += c.RightTotalSize;
-            if (c.Status != DiffStatus.Identical) allIdentical = false;
+            if (c.Status is not (DiffStatus.Identical or DiffStatus.SameContentDifferentTime)) allIdentical = false;
         }
         node.LeftTotalSize = node.Left is null ? 0 : leftSize;
         node.RightTotalSize = node.Right is null ? 0 : rightSize;
@@ -178,6 +224,21 @@ public sealed class DiffEngine
         else if (node.Left is null) node.Status = DiffStatus.OnlyRight;
         else if (node.Right is null) node.Status = DiffStatus.OnlyLeft;
         else node.Status = allIdentical ? DiffStatus.Identical : DiffStatus.Differs;
+    }
+
+    /// <summary>Recomputes the roll-up of <paramref name="node"/> and every folder below it, children first.</summary>
+    public static void RollUpTree(DiffNode node)
+    {
+        if (!node.IsDirectory || node.Status == DiffStatus.TypeConflict) return;
+        foreach (var c in node.Children) RollUpTree(c);
+        RollUp(node);
+    }
+
+    private void VerifyContent(DiffNode node, CompareOptions options, CancellationToken ct, Action<long>? bytesRead)
+    {
+        var result = FileComparer.Compare(node.Left!, node.Right!, options, _content, ct, bytesRead);
+        node.Status = result.Status;
+        node.ErrorMessage = result.ErrorMessage;
     }
 
     private static void AddChild(DiffNode parent, DiffNode child)

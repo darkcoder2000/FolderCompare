@@ -8,6 +8,7 @@ public sealed class AppSettings
     // Comparison
     public double ToleranceSeconds { get; set; } = 2;
     public bool IgnoreDstOffset { get; set; }
+    public ContentCompareMode ContentCompare { get; set; } = ContentCompareMode.Off;
     public SymlinkMode SymlinkMode { get; set; } = SymlinkMode.Skip;
     public bool IgnoreHiddenAndSystem { get; set; }
     public bool Recursive { get; set; } = true;
@@ -43,6 +44,7 @@ public sealed class AppSettings
         IncludePatterns = IncludePatterns,
         ExcludePatterns = ExcludePatterns,
         IgnoreHiddenAndSystem = IgnoreHiddenAndSystem,
+        ContentCompare = ContentCompare,
     };
 }
 
@@ -53,6 +55,8 @@ public sealed class FilterSettings
     public bool ShowNewerLeft { get; set; } = true;
     public bool ShowNewerRight { get; set; } = true;
     public bool ShowIdentical { get; set; } = true;
+    public bool ShowSameTimeDifferent { get; set; } = true;
+    public bool ShowTimeOnly { get; set; } = true;
     public bool ShowErrors { get; set; } = true;
     public bool DifferencesOnly { get; set; }
 
@@ -76,6 +80,7 @@ public sealed class Profile
     public string RightPath { get; set; } = "";
     public double ToleranceSeconds { get; set; } = 2;
     public bool IgnoreDstOffset { get; set; }
+    public ContentCompareMode ContentCompare { get; set; } = ContentCompareMode.Off;
     public bool IgnoreHiddenAndSystem { get; set; }
     public bool Recursive { get; set; } = true;
     public string ExcludePatterns { get; set; } = "";

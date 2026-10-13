@@ -158,6 +158,8 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _showNewerLeft = true;
     [ObservableProperty] private bool _showNewerRight = true;
     [ObservableProperty] private bool _showIdentical = true;
+    [ObservableProperty] private bool _showSameTimeDifferent = true;
+    [ObservableProperty] private bool _showTimeOnly = true;
     [ObservableProperty] private bool _showErrors = true;
     [ObservableProperty] private bool _differencesOnly;
     [ObservableProperty] private string _searchText = "";
@@ -170,6 +172,8 @@ public sealed partial class MainViewModel : ObservableObject
     partial void OnShowNewerLeftChanged(bool value) => FiltersChanged();
     partial void OnShowNewerRightChanged(bool value) => FiltersChanged();
     partial void OnShowIdenticalChanged(bool value) => FiltersChanged();
+    partial void OnShowSameTimeDifferentChanged(bool value) => FiltersChanged();
+    partial void OnShowTimeOnlyChanged(bool value) => FiltersChanged();
     partial void OnShowErrorsChanged(bool value) => FiltersChanged();
     partial void OnDifferencesOnlyChanged(bool value) => FiltersChanged();
 
@@ -225,14 +229,16 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool CompareOnStartup { get; private set; }
 
-    // --no-recursive applies to this session only and is not saved.
+    // --no-recursive and --content apply to this session only and are not saved.
     private bool _forceNonRecursive;
+    private ContentCompareMode? _forceContentCompare;
 
     public void ApplyCommandLine(CommandLineOptions options)
     {
         if (options.Left is not null) LeftPath = options.Left;
         if (options.Right is not null) RightPath = options.Right;
         _forceNonRecursive = options.NoRecursive;
+        _forceContentCompare = options.ContentCompare;
         CompareOnStartup = options.Compare && options.Left is not null && options.Right is not null;
     }
 
@@ -255,6 +261,8 @@ public sealed partial class MainViewModel : ObservableObject
         ShowNewerLeft = f.ShowNewerLeft;
         ShowNewerRight = f.ShowNewerRight;
         ShowIdentical = f.ShowIdentical;
+        ShowSameTimeDifferent = f.ShowSameTimeDifferent;
+        ShowTimeOnly = f.ShowTimeOnly;
         ShowErrors = f.ShowErrors;
         DifferencesOnly = f.DifferencesOnly;
     }
@@ -266,6 +274,8 @@ public sealed partial class MainViewModel : ObservableObject
         ShowNewerLeft = ShowNewerLeft,
         ShowNewerRight = ShowNewerRight,
         ShowIdentical = ShowIdentical,
+        ShowSameTimeDifferent = ShowSameTimeDifferent,
+        ShowTimeOnly = ShowTimeOnly,
         ShowErrors = ShowErrors,
         DifferencesOnly = DifferencesOnly,
     };
@@ -316,8 +326,19 @@ public sealed partial class MainViewModel : ObservableObject
         StatusText = "Scanning...";
         var options = Settings.ToCompareOptions();
         if (_forceNonRecursive) options = options with { Recursive = false };
+        if (_forceContentCompare is { } mode) options = options with { ContentCompare = mode };
         var progress = new Progress<ScanProgress>(p =>
-            StatusText = $"Scanning... {p.ItemsScanned:N0} items  {p.CurrentFolder}");
+        {
+            if (p.BytesTotal <= 0)
+            {
+                StatusText = $"Scanning... {p.ItemsScanned:N0} items  {p.CurrentFolder}";
+                return;
+            }
+            ProgressIndeterminate = false;
+            ProgressValue = 100.0 * p.BytesCompared / p.BytesTotal;
+            StatusText = $"Verifying contents... {ProgressValue:0}% ({RowViewModel.FormatSize(p.BytesCompared)} of " +
+                         $"{RowViewModel.FormatSize(p.BytesTotal)})  {p.CurrentFolder}";
+        });
         var started = DateTime.UtcNow;
 
         try
@@ -466,6 +487,8 @@ public sealed partial class MainViewModel : ObservableObject
         DiffStatus.NewerLeft => ShowNewerLeft,
         DiffStatus.NewerRight => ShowNewerRight,
         DiffStatus.Identical => ShowIdentical && !DifferencesOnly,
+        DiffStatus.SameTimeDifferentContent => ShowSameTimeDifferent,
+        DiffStatus.SameContentDifferentTime => ShowTimeOnly && !DifferencesOnly,
         DiffStatus.Differs => true,
         _ => ShowErrors,
     };
@@ -668,9 +691,11 @@ public sealed partial class MainViewModel : ObservableObject
         Add(DiffStatus.NewerLeft, "newer left");
         Add(DiffStatus.NewerRight, "newer right");
         Add(DiffStatus.OnlyRight, "only right");
+        Add(DiffStatus.SameTimeDifferentContent, "same time, different content");
         Add(DiffStatus.TypeConflict, "conflicts");
         Add(DiffStatus.Error, "errors");
         Add(DiffStatus.Identical, "identical");
+        Add(DiffStatus.SameContentDifferentTime, "timestamp only");
         CountsText = parts.Count == 0 ? "No files" : string.Join(" · ", parts);
     }
 
@@ -1071,6 +1096,7 @@ public sealed partial class MainViewModel : ObservableObject
             RightPath = RightPath,
             ToleranceSeconds = Settings.ToleranceSeconds,
             IgnoreDstOffset = Settings.IgnoreDstOffset,
+            ContentCompare = Settings.ContentCompare,
             IgnoreHiddenAndSystem = Settings.IgnoreHiddenAndSystem,
             Recursive = Settings.Recursive,
             ExcludePatterns = ExcludePatterns,
@@ -1110,6 +1136,7 @@ public sealed partial class MainViewModel : ObservableObject
         RightPath = p.RightPath;
         Settings.ToleranceSeconds = p.ToleranceSeconds;
         Settings.IgnoreDstOffset = p.IgnoreDstOffset;
+        Settings.ContentCompare = p.ContentCompare;
         Settings.IgnoreHiddenAndSystem = p.IgnoreHiddenAndSystem;
         Settings.Recursive = p.Recursive;
         ExcludePatterns = p.ExcludePatterns;

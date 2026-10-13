@@ -15,8 +15,9 @@ public partial class OverwriteDialog : Window
         SourceInfo.Text = Describe(conflict.SourceSize, conflict.SourceTimeUtc);
         TargetInfo.Text = Describe(conflict.TargetSize, conflict.TargetTimeUtc);
         NewerWarning.Visibility = conflict.TargetIsNewer ? Visibility.Visible : Visibility.Collapsed;
-        // A newer destination defaults to the safe choice.
-        if (conflict.TargetIsNewer) SkipButton.IsDefault = true;
+        UnknownWarning.Visibility = conflict.DirectionUnknown ? Visibility.Visible : Visibility.Collapsed;
+        // A newer destination or an unknown direction defaults to the safe choice.
+        if (conflict.TargetIsNewer || conflict.DirectionUnknown) SkipButton.IsDefault = true;
         else OverwriteButton.IsDefault = true;
     }
 

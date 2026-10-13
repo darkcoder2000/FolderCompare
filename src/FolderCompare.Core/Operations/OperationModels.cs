@@ -48,6 +48,11 @@ public sealed class PlannedAction
     public bool TargetExists { get; init; }
     /// <summary>The existing destination is newer than the source (overwriting it may be a mistake).</summary>
     public bool TargetIsNewer { get; init; }
+    /// <summary>
+    /// Both files have the same timestamp but different content, so neither side can be called newer. Overwriting
+    /// always needs an explicit choice.
+    /// </summary>
+    public bool DirectionUnknown { get; init; }
 
     public string Description => Kind switch
     {
@@ -77,7 +82,8 @@ public sealed record OverwriteConflict(
     string SourcePath, string TargetPath,
     long SourceSize, DateTime SourceTimeUtc,
     long TargetSize, DateTime TargetTimeUtc,
-    bool TargetIsNewer);
+    bool TargetIsNewer,
+    bool DirectionUnknown = false);
 
 public enum OverwriteChoice
 {

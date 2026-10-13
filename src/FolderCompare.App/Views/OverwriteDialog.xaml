@@ -8,6 +8,10 @@
             <TextBlock Foreground="{DynamicResource ErrorBrush}" FontWeight="Bold" TextWrapping="Wrap"
                        Text="Warning: the destination file is NEWER than the source. Overwriting it replaces the newer version - is the copy direction correct?" />
         </Border>
+        <Border x:Name="UnknownWarning" Background="{DynamicResource WarningBarBackground}" Padding="8,6" Margin="0,0,0,10" Visibility="Collapsed">
+            <TextBlock Foreground="{DynamicResource ConflictBrush}" FontWeight="Bold" TextWrapping="Wrap"
+                       Text="Both files have the same timestamp but different content, so it is unknown which one is newer. Compare the contents before overwriting." />
+        </Border>
         <TextBlock Text="The destination already contains this file:" Margin="0,0,0,8" />
         <Grid>
             <Grid.ColumnDefinitions>

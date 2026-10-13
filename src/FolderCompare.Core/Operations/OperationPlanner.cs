@@ -103,6 +103,13 @@ public static class OperationPlanner
             if (topLevel) notes.Add($"{node.RelativePath}: already identical.");
             return;
         }
+        if (node.Status == DiffStatus.SameContentDifferentTime)
+        {
+            if (topLevel) notes.Add($"{node.RelativePath}: content identical, only the timestamps differ.");
+            return;
+        }
+
+        bool directionUnknown = node.Status == DiffStatus.SameTimeDifferentContent && dst is not null;
 
         actions.Add(new PlannedAction
         {
@@ -115,7 +122,8 @@ public static class OperationPlanner
             SourceTimeUtc = src.LastWriteUtc,
             TargetTimeUtc = dst?.LastWriteUtc,
             TargetExists = dst is not null,
-            TargetIsNewer = dst is not null && TimestampComparer.IsNewer(dst.LastWriteUtc, src.LastWriteUtc, result.Options.Tolerance),
+            TargetIsNewer = !directionUnknown && dst is not null && TimestampComparer.IsNewer(dst.LastWriteUtc, src.LastWriteUtc, result.Options.Tolerance),
+            DirectionUnknown = directionUnknown,
         });
     }
 
