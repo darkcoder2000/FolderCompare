@@ -10,8 +10,14 @@ See README.md for features, shortcuts and layout. This file holds working knowle
     Run it with `dotnet run --project src/FolderCompare.Avalonia [-- "left" "right" --compare]`.
 - `dotnet build`, `dotnet test` (xUnit, all tests must pass before committing). Core tests must also pass on Linux
   (see `CLAUDE.local.md` for the local WSL setup).
-- Release exe: `dotnet publish src/FolderCompare.App -c Release -o publish` → single-file self-contained
+- CI (`.github/workflows/ci.yml`) builds and tests on Windows, Linux and macOS for every push; on Linux/macOS only
+  Core tests and the Avalonia project are built (the WPF project needs Windows).
+- WPF release exe: `dotnet publish src/FolderCompare.App -c Release -o publish` → single-file self-contained
   `publish\FolderCompare.exe` (~156 MB). Delete `publish\` first so no stale files are left.
+- Avalonia release builds take the RID on the command line (nothing is fixed in the csproj):
+  `dotnet publish src/FolderCompare.Avalonia -c Release -r <win-x64|linux-x64|osx-arm64|osx-x64> -o publish/<rid>`
+  → single file of ~100–115 MB. Linux/macOS can be cross-published from Windows. The macOS `.app` bundle is made by
+  `build/macos/make-app.sh` (needs macOS tools, runs in the release workflow).
 
 ## Architecture rules
 - `FolderCompare.Core` has no WPF reference. All file access goes through `System.IO.Abstractions.IFileSystem`
@@ -73,7 +79,10 @@ See README.md for features, shortcuts and layout. This file holds working knowle
 
 ## Explorer context menu (src/FolderCompare.ShellExt)
 - Native C++ `IExplorerCommand` DLL (WRL, x64, static CRT), built by `build.ps1` with the MSVC Build Tools from an
-  incremental target in `FolderCompare.App.csproj`, then embedded in the exe. `dotnet build` of the App needs MSVC.
+  incremental target in `FolderCompare.App.csproj` / `FolderCompare.Avalonia.csproj`, then embedded in the exe.
+  Building either app on Windows needs MSVC. In the Avalonia project the target and the embedded DLL are conditional
+  (`WithShellExt`: Windows host and RID empty or `win-x64`), so Linux/macOS builds don't need MSVC. The Tools menu entry
+  is hidden where `IExplorerIntegrationService.IsSupported` is false (`NoExplorerIntegration` off Windows).
 - Registered per user via `ExplorerCommandHandler` verbs (classic menu, no package). The DLL decides visibility and
   titles (`GetState`/`GetTitle`), stores the left item in `HKCU\Software\FolderCompare\LeftSelection` and starts
   `FolderCompare.exe "left" "right" --compare`. CLSIDs and registry names in `ExplorerMenuLayout` must match `ShellExt.cpp`.
@@ -82,12 +91,26 @@ See README.md for features, shortcuts and layout. This file holds working knowle
 - `Shell.Application` → `Namespace(dir).ParseName(name).Verbs()` lists the visible entries for single-item checks.
 
 ## Releasing
+Until the Avalonia port is merged, releases from `main` are still the WPF app (steps 1–4). The Avalonia app (2.0.0)
+uses the release workflow instead (steps A–C).
 1. Bump `<Version>` in `src/FolderCompare.App/FolderCompare.App.csproj` (semver; new feature → minor).
 2. Test, clean Release publish, check the exe's ProductVersion.
 3. Commit, push `main`, create annotated tag `vX.Y.Z`, push tag.
 4. `gh release create vX.Y.Z publish/FolderCompare.exe --title "FolderCompare X.Y.Z" --notes ...`
    Release notes describe user-visible changes; no mention of Claude.
 
+Avalonia app (`.github/workflows/release.yml`, runs on every pushed `v*` tag once it is on the default branch):
+A. Bump `<Version>` in `src/FolderCompare.Avalonia/FolderCompare.Avalonia.csproj`; the workflow fails if it differs
+   from the tag.
+B. Commit, push, create an annotated tag `vX.Y.Z` whose message is the release notes (or add
+   `docs/release-notes/X.Y.Z.md`), push the tag.
+C. The workflow tests, publishes win-x64 / linux-x64 / osx-arm64 / osx-x64, packages (`FolderCompare.exe`, zip,
+   tar.gz, ad-hoc signed `.app` zips), adds `SHA256SUMS.txt` and creates a **draft** release. Check it and publish it
+   on GitHub. Release notes: user-visible changes only, no mention of Claude.
+
 ## Verifying UI changes
 There are no automated UI tests. Run the Debug build, check the relevant items in `docs/MANUAL_TESTS.md`,
 and add new checklist items for new features. When automating with SendKeys use the grouped form `^(n)`.
+UI changes during the port go into both apps (or only the Avalonia one if the WPF app doesn't need them); the
+Avalonia app also has OS-specific checklist sections. Linux can be checked locally through WSLg (see
+`CLAUDE.local.md`); macOS only through CI unless a Mac is available.

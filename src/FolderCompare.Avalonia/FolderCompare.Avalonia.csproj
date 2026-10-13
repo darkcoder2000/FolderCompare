@@ -50,4 +50,24 @@
     <ProjectReference Include="..\FolderCompare.Core\FolderCompare.Core.csproj" />
   </ItemGroup>
 
+  <!--
+    Native Explorer context menu handler (C++, needs the MSVC Build Tools), embedded and extracted on Register.
+    Windows builds only: Linux and macOS builds (and their RIDs) neither need MSVC nor carry the DLL.
+  -->
+  <PropertyGroup>
+    <ShellExtDir>$(MSBuildThisFileDirectory)..\FolderCompare.ShellExt\</ShellExtDir>
+    <ShellExtDll>$(ShellExtDir)bin\x64\FolderCompare.ShellExt.dll</ShellExtDll>
+    <WithShellExt Condition="$([MSBuild]::IsOSPlatform('Windows')) And ('$(RuntimeIdentifier)' == '' Or '$(RuntimeIdentifier)' == 'win-x64')">true</WithShellExt>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(WithShellExt)' == 'true'">
+    <ShellExtSource Include="$(ShellExtDir)ShellExt.cpp;$(ShellExtDir)ShellExt.def;$(ShellExtDir)build.ps1" />
+    <EmbeddedResource Include="$(ShellExtDll)" LogicalName="FolderCompare.ShellExt.dll" Link="ShellExt\FolderCompare.ShellExt.dll" />
+  </ItemGroup>
+
+  <Target Name="BuildShellExt" BeforeTargets="BeforeBuild;PrepareForBuild" Condition="'$(WithShellExt)' == 'true'"
+          Inputs="@(ShellExtSource)" Outputs="$(ShellExtDll)">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ShellExtDir)build.ps1&quot;" />
+  </Target>
+
 </Project>

@@ -116,3 +116,31 @@ Restart Explorer after changing the shell extension (`Stop-Process -Name explore
 - [ ] A file that exists on one side only opens against an empty pane, and saving that pane creates the file.
 - [ ] A binary file shows "is not a text file". A file larger than 20 MB asks first.
 - [ ] Closing the window, or the main window, with unsaved changes asks Save / Don't save / Cancel, and Cancel keeps it open.
+
+## Avalonia app (src/FolderCompare.Avalonia) on Windows, Linux and macOS
+Run every section above with the Avalonia app on each OS (`exampleDiff` from `tools/New-ExampleDiff.ps1` on Windows;
+on Linux/macOS create two folders by hand). Then also check:
+- [ ] Layout: menu, folder bar, filter toggles (checked ones have a light blue fill and readable colored labels), result grid with folder/file/warning icons, status bar. The status column sits under the swap button and the columns fill the width after resizing the window.
+- [ ] Clicking a column header sorts the tree (folders stay together); clicking again reverses the order.
+- [ ] Dropping a folder (or a file: its folder) from the file manager onto a path box sets that path.
+- [ ] Every dialog (preview, overwrite, summary, rename, delete side, settings, profile name, message boxes) opens centered on the main window, Enter/Escape press the default/cancel button, and the overwrite dialog defaults to *Skip* when the destination is newer.
+- [ ] Settings: tolerance and preview threshold are number boxes; OK saves, Cancel discards.
+- [ ] Window size, position, maximized state and column widths are restored after a restart (and the WPF app reads the same settings).
+- [ ] Text compare: both panes stay aligned with the OS's monospace font (Consolas / Menlo / DejaVu Sans Mono), filler rows are hatched, the overview bar and middle strip follow scrolling.
+- [ ] *Copy full path* puts the paths on the clipboard; *Show in Explorer/Finder/File Manager* selects the item.
+
+### Windows only
+- [ ] *Tools → Explorer context menu integration* is visible and works like in the WPF app (the Avalonia exe embeds the same shell extension).
+- [ ] Delete goes to the Recycle Bin and can be restored from there.
+
+### Linux (e.g. Ubuntu GNOME, or WSLg)
+- [ ] `a.txt` and `A.txt` in the same folder are two rows; `Docs` vs `docs` on the two sides are *only left* / *only right*.
+- [ ] Copying keeps the file's permissions (e.g. an executable script stays executable: `ls -l`).
+- [ ] Delete moves to the Trash (`~/.local/share/Trash`); the item can be restored from the file manager's Trash. On a USB stick it goes to `.Trash-<uid>` on the stick.
+- [ ] Where no trash folder can be created (read-only parent of the mount), deleting asks to delete permanently instead.
+- [ ] *Ignore hidden files* hides names starting with a dot. The Tools menu has no Explorer entry.
+
+### macOS
+- [ ] Shortcuts use Cmd instead of Ctrl (Cmd+F, Cmd+E, Cmd+→/←, Cmd+A; in text compare Cmd+S, Cmd+N/P, Cmd+R/L) and the menus show them.
+- [ ] The downloaded `FolderCompare.app` starts after *right-click → Open* (or `xattr -dr com.apple.quarantine FolderCompare.app`).
+- [ ] Delete moves to the Trash and *Put Back* restores the item. Settings are in `~/Library/Application Support/FolderCompare`.

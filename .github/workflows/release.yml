@@ -1,0 +1,115 @@
+name: Release
+
+# Push an annotated tag vX.Y.Z (message = release notes) to build all platforms and create a DRAFT release.
+# Review the draft on GitHub and publish it manually.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  APP_PROJECT: src/FolderCompare.Avalonia/FolderCompare.Avalonia.csproj
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-latest
+            rid: osx-arm64
+          - os: macos-latest
+            rid: osx-x64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Check version
+        id: version
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$APP_PROJECT" | head -1)
+          tag="${GITHUB_REF_NAME#v}"
+          echo "csproj version: $version, tag: $tag"
+          if [ "$version" != "$tag" ]; then
+            echo "::error::<Version> in $APP_PROJECT ($version) does not match the tag ($tag)"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: dotnet test tests/FolderCompare.Core.Tests -c Release
+
+      - name: Publish
+        run: dotnet publish "$APP_PROJECT" -c Release -r ${{ matrix.rid }} -o publish/${{ matrix.rid }}
+
+      - name: Package (Windows)
+        if: matrix.rid == 'win-x64'
+        run: |
+          mkdir -p assets
+          cp publish/win-x64/FolderCompare.exe assets/FolderCompare.exe
+          (cd publish/win-x64 && 7z a -tzip "../../assets/FolderCompare-${{ steps.version.outputs.version }}-win-x64.zip" FolderCompare.exe)
+
+      - name: Package (Linux)
+        if: matrix.rid == 'linux-x64'
+        run: |
+          mkdir -p assets
+          chmod +x publish/linux-x64/FolderCompare
+          tar -czf "assets/FolderCompare-${{ steps.version.outputs.version }}-linux-x64.tar.gz" -C publish/linux-x64 FolderCompare
+
+      - name: Package (macOS)
+        if: startsWith(matrix.rid, 'osx-')
+        run: |
+          mkdir -p assets bundle
+          bash build/macos/make-app.sh publish/${{ matrix.rid }} "${{ steps.version.outputs.version }}" bundle
+          arch="${{ matrix.rid }}"; arch="${arch#osx-}"
+          ditto -c -k --keepParent bundle/FolderCompare.app "assets/FolderCompare-${{ steps.version.outputs.version }}-macos-$arch.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: assets-${{ matrix.rid }}
+          path: assets/*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: assets-*
+          path: assets
+          merge-multiple: true
+
+      - name: Checksums
+        run: (cd assets && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
+      - name: Release notes from the tag message
+        run: |
+          git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > release-notes.md
+          if [ -f "docs/release-notes/${GITHUB_REF_NAME#v}.md" ]; then cp "docs/release-notes/${GITHUB_REF_NAME#v}.md" release-notes.md; fi
+          cat release-notes.md
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" assets/* --title "FolderCompare ${GITHUB_REF_NAME#v}" --notes-file release-notes.md --draft
