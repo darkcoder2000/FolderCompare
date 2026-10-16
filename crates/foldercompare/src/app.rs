@@ -117,6 +117,8 @@ pub struct FolderCompareApp {
     pub text_windows: Vec<crate::text_compare::SharedWindow>,
     /// The main window waits for text windows to answer their save prompts before closing.
     pub exit_pending: bool,
+    /// Tools menu checkbox: the entries in the Explorer context menu.
+    pub explorer_integration: bool,
     pub columns: [f32; 7],
     pub list: crate::result_list::ListView,
     /// Screen rects of the path boxes (drop targets) and the box a file is dragged over.
@@ -177,6 +179,7 @@ impl FolderCompareApp {
             dialogs: Vec::new(),
             text_windows: Vec::new(),
             exit_pending: false,
+            explorer_integration: crate::explorer::is_registered(),
             columns,
             list: Default::default(),
             left_box: None,

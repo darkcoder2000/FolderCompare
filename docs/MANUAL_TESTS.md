@@ -116,3 +116,41 @@ Restart Explorer after changing the shell extension (`Stop-Process -Name explore
 - [ ] A file that exists on one side only opens against an empty pane, and saving that pane creates the file.
 - [ ] A binary file shows "is not a text file". A file larger than 20 MB asks first.
 - [ ] Closing the window, or the main window, with unsaved changes asks Save / Don't save / Cancel, and Cancel keeps it open.
+
+## Rust app (branch `rust-port`)
+The Rust/egui app (`target/debug/FolderCompare.exe`, or `publish/rust/<target>/` for release builds) must pass every
+item above. For test runs set `FOLDERCOMPARE_SETTINGS_DIR` to a scratch folder: the real `settings.json` (shared
+with the WPF app) stays untouched and an existing Explorer registration of another exe is left alone.
+Additional items:
+- [ ] Settings written by the WPF app are read (window bounds, column widths, filters, profiles, recent paths), and
+      the WPF app still reads the file after the Rust app saved it (unknown fields survive).
+- [ ] The status column stays centered under the ⇄ button while resizing the window and the size/date columns.
+- [ ] Keyboard in the list: Up/Down/PgUp/PgDn/Home/End move the focus (Shift extends), Ctrl+Up/Down move only
+      the focus, Space toggles, Right/Left expand/collapse/jump to the parent, Enter toggles or opens the text compare.
+- [ ] Dropping a file or folder on a path box sets the folder (a file is replaced by its parent folder); the box
+      is outlined while dragging over it.
+- [ ] A worker or UI error shows "Something went wrong: ..." with the log folder and the app keeps running.
+- [ ] Text compare opens as its own native window per request; several can be open; closing the main window asks
+      each window with unsaved changes first (Cancel keeps everything open).
+- [ ] Text compare: typing, Enter, Backspace/Delete (Ctrl = word), Tab, arrows, Home (smart)/End, Ctrl+Home/End,
+      PgUp/PgDn, Shift selection, mouse selection (drag, double-click word), Ctrl+A/C/X/V, Ctrl+Z/Y/Shift+Z.
+      Typing undoes word by word; a section copy is one undo step.
+- [ ] Text compare round trip: edit and save files with CRLF, LF, mixed line endings, UTF-8 with/without BOM,
+      UTF-16 LE/BE and ANSI; `git diff --no-index` against the original shows only the edited lines.
+- [ ] Two files on the command line open only the text compare window; closing it exits the app.
+
+### Windows
+- [ ] The exe shows the app icon, version 2.0.0 in its properties, and no console window (release build).
+- [ ] Tools > Explorer context menu integration registers/unregisters; the entries work with the Rust exe and the
+      registry layout is the same as the WPF app's (switching between both apps re-registers on start).
+- [ ] Delete goes to the Recycle Bin; long paths (> 260 chars) can be compared and copied.
+
+### Linux (WSLg or a desktop)
+- [ ] Case-only names (`a.txt` / `A.txt`) are separate rows; copying both works.
+- [ ] Delete moves to the freedesktop trash (`~/.local/share/Trash`); a failed trash move offers a permanent delete.
+- [ ] Dotfiles count as hidden; copied files keep their permission bits (e.g. an executable script).
+- [ ] Folder pickers and the export dialog open (xdg-desktop-portal); Open / Show in file manager work.
+
+### macOS (release build from CI)
+- [ ] The `.app` starts after removing the quarantine flag (ad-hoc signed); Cmd replaces Ctrl in all shortcuts.
+- [ ] Delete moves to the Trash; Show in Finder selects the item.

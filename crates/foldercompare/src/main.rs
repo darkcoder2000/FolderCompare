@@ -4,6 +4,7 @@ mod actions;
 mod app;
 mod cli;
 mod dialogs;
+mod explorer;
 mod main_view;
 mod platform;
 mod result_list;
@@ -30,9 +31,12 @@ pub fn panic_message(panic: &Box<dyn Any + Send>) -> String {
     }
 }
 
-/// The window icon (set in Step 7).
+/// The window icon (the same picture as app.ico and the macOS bundle icon).
 pub fn app_icon() -> Option<std::sync::Arc<egui::IconData>> {
-    None
+    static PNG: &[u8] = include_bytes!("../assets/app-icon-256.png");
+    eframe::icon_data::from_png_bytes(PNG)
+        .ok()
+        .map(std::sync::Arc::new)
 }
 
 /// Rolling daily log files, 14 kept. The guard flushes the log when dropped.
@@ -83,14 +87,41 @@ fn viewport(settings: &AppSettings) -> egui::ViewportBuilder {
     vp
 }
 
+/// winit picks Wayland whenever `WAYLAND_DISPLAY` is set and fails if its socket is missing (e.g. WSLg with
+/// systemd, or a stale variable). Fall back to X11 then. Runs before any other thread exists.
+#[cfg(target_os = "linux")]
+fn prefer_working_display() {
+    let Some(display) = std::env::var_os("WAYLAND_DISPLAY") else {
+        return;
+    };
+    let socket = std::path::Path::new(&display);
+    let path = if socket.is_absolute() {
+        socket.to_path_buf()
+    } else {
+        std::path::PathBuf::from(std::env::var_os("XDG_RUNTIME_DIR").unwrap_or_default())
+            .join(socket)
+    };
+    if !path.exists() && std::env::var_os("DISPLAY").is_some() {
+        info!("Wayland socket {} not found, using X11", path.display());
+        // SAFETY: called at the start of main, before other threads are started.
+        unsafe { std::env::remove_var("WAYLAND_DISPLAY") };
+    }
+}
+
 fn main() {
     let _guard = init_logging();
+    #[cfg(target_os = "linux")]
+    prefer_working_display();
     install_panic_hook();
     let args: Vec<String> = std::env::args_os()
         .skip(1)
         .map(|a| a.to_string_lossy().into_owned())
         .collect();
     info!("FolderCompare started with arguments {args:?}");
+    // Test runs (separate settings folder) leave an existing Explorer registration of another exe alone.
+    if std::env::var_os("FOLDERCOMPARE_SETTINGS_DIR").is_none() {
+        explorer::ensure_current_path();
+    }
     let options = CommandLineOptions::parse(&args);
     let settings = settings::load(&settings::settings_path());
 

@@ -106,3 +106,16 @@ The C# projects stay untouched on this branch until the Rust app reaches parity.
   id, copy recompares synchronously first, shared scroll offset for both panes, overview bar, center strip, details,
   save/reload/close prompts). Each window is its own native window (`show_viewport_deferred`, state in
   `Arc<Mutex<…>>`); with two files on the command line `TextOnlyApp` runs it as the root window.
+- Explorer menu (Rust, `explorer.rs`, Windows only): `build.rs` runs `src/FolderCompare.ShellExt/build.ps1` (MSVC;
+  a mutex serializes it with the WPF build) for `x86_64-pc-windows-msvc` and embeds the DLL with `include_bytes!`
+  (`cfg(shellext)`). Without MSVC (or with `FOLDERCOMPARE_NO_SHELLEXT`) the app builds without the integration and
+  the Tools entry is hidden. Same registry layout as the WPF app (`fc_core::shell_layout`); test runs with
+  `FOLDERCOMPARE_SETTINGS_DIR` skip the start-up re-registration. `build.rs` also compiles a generated `.rc`
+  (app.ico, `windows/app.manifest`: asInvoker, longPathAware, PerMonitorV2, version info from Cargo).
+- Rust release (`.github/workflows/rust-release.yml`, tags `v2.*`): bump `version` in the root `Cargo.toml`
+  (the workflow fails if it differs from the tag), push an annotated tag whose message is the release notes (or add
+  `docs/release-notes/X.Y.Z.md`). It tests, builds win-x64 / linux-x64 / macos-arm64 / macos-x64, packages (exe,
+  zip, tar.gz, ad-hoc signed `.app` zips via `build/macos/make-app.sh`), adds `SHA256SUMS.txt` and creates a draft
+  release. Local release builds: `cargo build --release` → copy to `publish/rust/<target>/`.
+- Verifying the Rust app: `docs/MANUAL_TESTS.md` ("Rust app" section, per OS). Linux via WSLg (`CLAUDE.local.md`),
+  macOS through CI only.

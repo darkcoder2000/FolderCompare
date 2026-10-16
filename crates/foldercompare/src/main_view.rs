@@ -158,6 +158,22 @@ impl FolderCompareApp {
                     self.compare_contents();
                 }
                 ui.separator();
+                if crate::explorer::is_supported() {
+                    let mut on = self.explorer_integration;
+                    let changed = ui
+                        .checkbox(&mut on, "Explorer context menu integration")
+                        .on_hover_text("Adds \"Select as left\", \"Compare to ...\" and \"Compare Folders/Files\" to the right-click menu of files and folders in Explorer")
+                        .changed();
+                    if changed {
+                        let result = if on { crate::explorer::register() } else { crate::explorer::unregister() };
+                        if let Err(e) = result {
+                            tracing::error!("Could not change the Explorer context menu integration: {e}");
+                            self.dialogs.push(crate::dialogs::Dialog::error("Explorer context menu", e));
+                        }
+                        self.explorer_integration = crate::explorer::is_registered();
+                    }
+                    ui.separator();
+                }
                 if ui.button("Settings...").clicked() {
                     self.open_settings();
                 }
