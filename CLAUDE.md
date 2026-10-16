@@ -78,3 +78,7 @@ The C# projects stay untouched on this branch until the Rust app reaches parity.
   Raw Win32 calls need the `\?\` prefix for long paths (std adds it itself).
 - `report.rs` (CSV/TXT, the app adds the BOM) and `shell_layout.rs` (Explorer registry layout, `classify`) are pure
   and tested on every OS.
+- `textdiff/`: own Myers (`myers.rs`, explicit stack instead of recursion, `MAX_WORK_PER_SNAKE` fallback),
+  `compare_lines`, `compare_inline`, `TextComparison` (fillers, `block_at`, `partner_line`), `compute_block_copy`
+  over the `LineSource` trait, `codec` (BOM / strict UTF-8 / Windows-1252, byte-exact round trip; a text without
+  line breaks gets the OS newline). All offsets inside lines are **chars**, not bytes or UTF-16 units.
