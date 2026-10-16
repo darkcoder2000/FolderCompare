@@ -92,3 +92,9 @@ The C# projects stay untouched on this branch until the Rust app reaches parity.
   when present, Phosphor icons, Hack for monospace), `dialogs.rs` (`egui::Modal` stack).
 - Run the Debug build: `target/debug/FolderCompare.exe "left" "right" --compare`. Screenshots: `shot.ps1` in the
   scratchpad (PrintWindow by process id).
+- Operations (`actions.rs`): copy/delete/rename/rescan/export/profiles/settings follow `MainViewModel` step by step.
+  The executor runs on a worker; an overwrite question is `Msg::Overwrite` with a reply channel the dialog answers
+  (closing it = Cancel all). Afterwards the affected rows are refreshed (`RefreshRequest`, plus `with_name` for "keep
+  both" copies) and applied only if `MainState::generation` is unchanged. Items the trash refused are offered for a
+  permanent delete (never silently). Context-menu enable states are captured in `Enables` before the list borrows
+  the state.

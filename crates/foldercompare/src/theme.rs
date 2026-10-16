@@ -1,5 +1,7 @@
 //! The only place colors are defined (light theme, from the WPF app's Colors.xaml plus the colors that were
 //! hard-coded there), plus fonts, icons and the egui style.
+// The text compare colors are used once the text compare window lands.
+#![allow(dead_code)]
 
 use egui::{Color32, FontData, FontDefinitions, FontFamily, FontId, TextStyle};
 
@@ -48,9 +50,8 @@ pub const WHITESPACE_MARK: Color32 = Color32::from_rgb(0xB0, 0xB0, 0xB0);
 /// Icons (Phosphor, MIT) used across the app.
 pub mod icons {
     pub use egui_phosphor::regular::{
-        ARROW_CLOCKWISE, ARROW_LEFT, ARROW_RIGHT, ARROW_U_UP_LEFT, ARROW_U_UP_RIGHT,
-        ARROWS_LEFT_RIGHT, CARET_DOWN, CARET_RIGHT, CARET_UP, EQUALS, FILE, FLOPPY_DISK, FOLDER,
-        NOT_EQUALS, WARNING,
+        ARROW_LEFT, ARROW_RIGHT, ARROWS_LEFT_RIGHT, CARET_DOWN, CARET_RIGHT, CARET_UP, EQUALS,
+        FILE, FOLDER, NOT_EQUALS, WARNING,
     };
 }
 

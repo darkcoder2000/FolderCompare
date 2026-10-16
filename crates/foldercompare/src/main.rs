@@ -1,7 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-// Temporary until the operation flows (step 5) use the remaining helpers.
-#![allow(dead_code, unused_imports)]
 
+mod actions;
 mod app;
 mod cli;
 mod dialogs;

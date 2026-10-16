@@ -138,6 +138,26 @@ pub struct RefreshRequest {
     ancestors: Vec<(NodeId, String)>,
 }
 
+impl RefreshRequest {
+    /// The same request for another child of the same parent (e.g. a "keep both" copy).
+    pub fn with_name(&self, name: &str) -> RefreshRequest {
+        let parent_rel = &self.ancestors[0].1;
+        RefreshRequest {
+            name: name.to_string(),
+            relative_path: join_relative(parent_rel, name),
+            ..self.clone()
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn parent(&self) -> NodeId {
+        self.parent
+    }
+}
+
 /// Data gathered off the UI thread for refreshing one child of a folder node.
 #[derive(Debug)]
 pub struct RefreshData {

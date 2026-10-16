@@ -1,7 +1,10 @@
 //! Rendering of the main window.
 
 use egui::{Align, Button, Key, Layout, Modifiers, RichText, TextEdit, Ui, vec2};
+use fc_core::model::{DiffStatus, NodeId, Side};
+use fc_core::ops::{CopyDirection, Sides};
 
+use crate::actions::ShellAction;
 use crate::app::{Busy, FolderCompareApp};
 use crate::dialogs::message_bar;
 use crate::platform;
@@ -53,10 +56,15 @@ impl FolderCompareApp {
                 result_list::fit_columns(&mut self.columns, rect.left(), rect.width(), swap_center);
                 let mut list = std::mem::take(&mut self.list);
                 let mut columns = self.columns;
+                let enables = Enables::of(self);
+                let mut chosen = None;
                 let events = list.show(ui, &mut self.state, &mut columns, &mut |ui| {
-                    ui.label("");
+                    context_menu(ui, &enables, &mut chosen);
                 });
                 self.columns = columns;
+                if let Some(c) = chosen {
+                    self.run_menu_command(c);
+                }
                 self.list = list;
                 if let Some(key) = events.sort {
                     self.state.sort_by(key);
@@ -81,14 +89,24 @@ impl FolderCompareApp {
                 {
                     self.start_compare();
                 }
-                ui.add_enabled(
-                    self.state.can_refresh_selected(busy),
-                    Button::new("Rescan selected"),
-                );
-                ui.add_enabled(
-                    self.state.can_export(busy),
-                    Button::new("Export report...").shortcut_text(format!("{ctrl}+E")),
-                );
+                if ui
+                    .add_enabled(
+                        self.state.can_refresh_selected(busy),
+                        Button::new("Rescan selected"),
+                    )
+                    .clicked()
+                {
+                    self.rescan_selected();
+                }
+                if ui
+                    .add_enabled(
+                        self.state.can_export(busy),
+                        Button::new("Export report...").shortcut_text(format!("{ctrl}+E")),
+                    )
+                    .clicked()
+                {
+                    self.export_report();
+                }
                 ui.separator();
                 if ui.button("Open log folder").clicked() {
                     self.open_log_folder();
@@ -116,7 +134,9 @@ impl FolderCompareApp {
                 }
             });
             ui.menu_button("Profiles", |ui| {
-                ui.add(Button::new("Save current as profile..."));
+                if ui.button("Save current as profile...").clicked() {
+                    self.ask_save_profile();
+                }
                 if ui
                     .add_enabled(
                         self.selected_profile.is_some(),
@@ -128,12 +148,19 @@ impl FolderCompareApp {
                 }
             });
             ui.menu_button("Tools", |ui| {
-                ui.add_enabled(
-                    self.state.can_compare_contents(busy),
-                    Button::new("Compare contents...").shortcut_text("Enter"),
-                );
+                if ui
+                    .add_enabled(
+                        self.state.can_compare_contents(busy),
+                        Button::new("Compare contents...").shortcut_text("Enter"),
+                    )
+                    .clicked()
+                {
+                    self.compare_contents();
+                }
                 ui.separator();
-                ui.add(Button::new("Settings..."));
+                if ui.button("Settings...").clicked() {
+                    self.open_settings();
+                }
             });
         });
     }
@@ -311,11 +338,21 @@ impl FolderCompareApp {
             }
         });
         ui.horizontal_wrapped(|ui| {
-            ui.add_enabled(self.state.can_copy_to_right(busy), Button::new(format!("Copy {}", icons::ARROW_RIGHT)))
-                .on_hover_text(format!("Copy selection to the right ({ctrl}+Right)"));
-            ui.add_enabled(self.state.can_copy_to_left(busy), Button::new(format!("{} Copy", icons::ARROW_LEFT)))
-                .on_hover_text(format!("Copy selection to the left ({ctrl}+Left)"));
-            ui.add_enabled(self.state.can_delete_any(busy), Button::new("Delete")).on_hover_text("Delete selection (Del)");
+            if ui.add_enabled(self.state.can_copy_to_right(busy), Button::new(format!("Copy {}", icons::ARROW_RIGHT)))
+                .on_hover_text(format!("Copy selection to the right ({ctrl}+Right)"))
+                .clicked()
+            {
+                self.copy(CopyDirection::LeftToRight);
+            }
+            if ui.add_enabled(self.state.can_copy_to_left(busy), Button::new(format!("{} Copy", icons::ARROW_LEFT)))
+                .on_hover_text(format!("Copy selection to the left ({ctrl}+Left)"))
+                .clicked()
+            {
+                self.copy(CopyDirection::RightToLeft);
+            }
+            if ui.add_enabled(self.state.can_delete_any(busy), Button::new("Delete")).on_hover_text("Delete selection (Del)").clicked() {
+                self.delete();
+            }
             ui.separator();
             if ui.add_enabled(self.can_compare(), Button::new("Refresh")).on_hover_text("Rescan (F5)").clicked() {
                 self.start_compare();
@@ -326,7 +363,9 @@ impl FolderCompareApp {
             if ui.button("Collapse all").on_hover_text("Collapse all folders").clicked() {
                 self.state.collapse_all();
             }
-            ui.button("Options").on_hover_text("Settings");
+            if ui.button("Options").on_hover_text("Settings").clicked() {
+                self.open_settings();
+            }
             ui.separator();
             ui.label("Exclude:");
             ui.add(TextEdit::singleline(&mut self.exclude).desired_width(200.0))
@@ -357,7 +396,9 @@ impl FolderCompareApp {
             if let Some(i) = chosen {
                 self.apply_profile(i);
             }
-            ui.button("Save").on_hover_text("Save the current folders and options as a profile");
+            if ui.button("Save").on_hover_text("Save the current folders and options as a profile").clicked() {
+                self.ask_save_profile();
+            }
             if ui.add_enabled(self.selected_profile.is_some(), Button::new("Remove")).on_hover_text("Delete the selected profile").clicked() {
                 self.delete_profile();
             }
@@ -407,6 +448,9 @@ impl FolderCompareApp {
         if busy && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape)) {
             self.cancel();
         }
+        if ctx.input_mut(|i| i.consume_key(cmd, Key::E)) {
+            self.export_report();
+        }
         if ctx.input_mut(|i| i.consume_key(cmd, Key::F)) {
             let id = egui::Id::new("search");
             ctx.memory_mut(|m| m.request_focus(id));
@@ -425,6 +469,18 @@ impl FolderCompareApp {
         }
         if ctx.input_mut(|i| i.consume_key(cmd, Key::A)) {
             self.state.select_all();
+        }
+        if ctx.input_mut(|i| i.consume_key(cmd, Key::ArrowRight)) {
+            self.copy(CopyDirection::LeftToRight);
+        }
+        if ctx.input_mut(|i| i.consume_key(cmd, Key::ArrowLeft)) {
+            self.copy(CopyDirection::RightToLeft);
+        }
+        if ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Delete)) {
+            self.delete();
+        }
+        if ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::F2)) {
+            self.ask_rename();
         }
 
         let shift = ctx.input(|i| i.modifiers.shift);
@@ -470,9 +526,27 @@ impl FolderCompareApp {
     }
 
     /// Enter or double-click: toggles a folder; opens the text compare for a file.
-    pub fn activate(&mut self, id: fc_core::model::NodeId) {
+    pub fn activate(&mut self, id: NodeId) {
         if self.state.is_expandable(id) {
             self.state.toggle_expanded(id);
+        } else if !self.state.node(id).is_dir {
+            self.compare_contents();
+        }
+    }
+
+    fn run_menu_command(&mut self, c: MenuCommand) {
+        match c {
+            MenuCommand::CompareContents => self.compare_contents(),
+            MenuCommand::Copy(d) => self.copy(d),
+            MenuCommand::Delete(s) => self.delete_side(s),
+            MenuCommand::Rename => self.ask_rename(),
+            MenuCommand::Shell(side, a) => self.open_side(side, a),
+            MenuCommand::CopyPath(l, r) => self.copy_paths(l, r),
+            MenuCommand::SelectStatus(s) => self.select_status(s),
+            MenuCommand::Invert => self.state.invert_selection(),
+            MenuCommand::ExpandSubtree => self.state.expand_subtree(),
+            MenuCommand::CollapseSubtree => self.state.collapse_subtree(),
+            MenuCommand::Rescan => self.rescan_selected(),
         }
     }
 
@@ -543,4 +617,170 @@ fn progress_bar(ui: &mut Ui, value: f32, indeterminate: bool) -> egui::Response 
     painter.rect_filled(bar, 2.0, ui.visuals().selection.bg_fill);
     ui.ctx().request_repaint();
     response
+}
+
+#[derive(Debug, Clone, Copy)]
+enum MenuCommand {
+    CompareContents,
+    Copy(CopyDirection),
+    Delete(Sides),
+    Rename,
+    Shell(Side, ShellAction),
+    CopyPath(bool, bool),
+    SelectStatus(DiffStatus),
+    Invert,
+    ExpandSubtree,
+    CollapseSubtree,
+    Rescan,
+}
+
+/// Enable states for the context menu, taken before the list borrows the state.
+struct Enables {
+    compare_contents: bool,
+    copy_right: bool,
+    copy_left: bool,
+    delete_any: bool,
+    rename: bool,
+    left: bool,
+    right: bool,
+    subtree: bool,
+    rescan: bool,
+}
+
+impl Enables {
+    fn of(app: &FolderCompareApp) -> Self {
+        let busy = app.is_busy();
+        let s = &app.state;
+        let first: Option<NodeId> = s.first_selected();
+        Self {
+            compare_contents: s.can_compare_contents(busy),
+            copy_right: s.can_copy_to_right(busy),
+            copy_left: s.can_copy_to_left(busy),
+            delete_any: s.can_delete_any(busy),
+            rename: s.can_rename(busy),
+            left: first.is_some_and(|f| s.node(f).left.is_some()),
+            right: first.is_some_and(|f| s.node(f).right.is_some()),
+            subtree: s.can_expand_subtree(),
+            rescan: s.can_refresh_selected(busy),
+        }
+    }
+}
+
+fn context_menu(ui: &mut Ui, e: &Enables, chosen: &mut Option<MenuCommand>) {
+    let ctrl = platform::ctrl_name();
+    let mut item = |ui: &mut Ui, enabled: bool, button: Button, c: MenuCommand| {
+        if ui.add_enabled(enabled, button).clicked() {
+            *chosen = Some(c);
+        }
+    };
+    item(
+        ui,
+        e.compare_contents,
+        Button::new(RichText::new("Compare contents...").strong()).shortcut_text("Enter"),
+        MenuCommand::CompareContents,
+    );
+    ui.separator();
+    item(
+        ui,
+        e.copy_right,
+        Button::new(format!("Copy to Right {}", icons::ARROW_RIGHT))
+            .shortcut_text(format!("{ctrl}+Right")),
+        MenuCommand::Copy(CopyDirection::LeftToRight),
+    );
+    item(
+        ui,
+        e.copy_left,
+        Button::new(format!("{} Copy to Left", icons::ARROW_LEFT))
+            .shortcut_text(format!("{ctrl}+Left")),
+        MenuCommand::Copy(CopyDirection::RightToLeft),
+    );
+    ui.separator();
+    item(
+        ui,
+        e.copy_right,
+        Button::new("Delete Left"),
+        MenuCommand::Delete(Sides::Left),
+    );
+    item(
+        ui,
+        e.copy_left,
+        Button::new("Delete Right"),
+        MenuCommand::Delete(Sides::Right),
+    );
+    item(
+        ui,
+        e.delete_any,
+        Button::new("Delete Both"),
+        MenuCommand::Delete(Sides::Both),
+    );
+    ui.separator();
+    item(
+        ui,
+        e.rename,
+        Button::new("Rename...").shortcut_text("F2"),
+        MenuCommand::Rename,
+    );
+    let file_manager = format!("Show in {}", platform::file_manager_name());
+    for (title, action) in [
+        ("Open", ShellAction::Open),
+        ("Open containing folder", ShellAction::OpenFolder),
+        (file_manager.as_str(), ShellAction::Reveal),
+    ] {
+        ui.menu_button(title, |ui| {
+            if ui.add_enabled(e.left, Button::new("Left")).clicked() {
+                *chosen = Some(MenuCommand::Shell(Side::Left, action));
+            }
+            if ui.add_enabled(e.right, Button::new("Right")).clicked() {
+                *chosen = Some(MenuCommand::Shell(Side::Right, action));
+            }
+        });
+    }
+    ui.menu_button("Copy full path", |ui| {
+        for (label, l, r) in [
+            ("Left", true, false),
+            ("Right", false, true),
+            ("Both", true, true),
+        ] {
+            if ui.button(label).clicked() {
+                *chosen = Some(MenuCommand::CopyPath(l, r));
+            }
+        }
+    });
+    ui.separator();
+    for (label, status) in [
+        ("Select all newer on left", DiffStatus::NewerLeft),
+        ("Select all newer on right", DiffStatus::NewerRight),
+        ("Select all only-left", DiffStatus::OnlyLeft),
+        ("Select all only-right", DiffStatus::OnlyRight),
+        (
+            "Select all same time, different content",
+            DiffStatus::SameTimeDifferentContent,
+        ),
+    ] {
+        if ui.button(label).clicked() {
+            *chosen = Some(MenuCommand::SelectStatus(status));
+        }
+    }
+    if ui.button("Invert selection").clicked() {
+        *chosen = Some(MenuCommand::Invert);
+    }
+    ui.separator();
+    if ui
+        .add_enabled(e.subtree, Button::new("Expand subtree"))
+        .clicked()
+    {
+        *chosen = Some(MenuCommand::ExpandSubtree);
+    }
+    if ui
+        .add_enabled(e.subtree, Button::new("Collapse subtree"))
+        .clicked()
+    {
+        *chosen = Some(MenuCommand::CollapseSubtree);
+    }
+    if ui
+        .add_enabled(e.rescan, Button::new("Rescan selected"))
+        .clicked()
+    {
+        *chosen = Some(MenuCommand::Rescan);
+    }
 }

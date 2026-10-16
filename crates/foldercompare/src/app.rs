@@ -43,6 +43,27 @@ pub enum Msg {
         outcome: Box<Result<DiffResult, CompareError>>,
         elapsed: Duration,
     },
+    OpProgress {
+        job: u64,
+        title: String,
+        progress: fc_core::ops::OperationProgress,
+    },
+    /// The executor asks what to do with an existing file; the answer goes back through `reply`.
+    Overwrite {
+        conflict: fc_core::ops::OverwriteConflict,
+        reply: Sender<fc_core::ops::OverwriteDecision>,
+    },
+    OpDone {
+        job: u64,
+        generation: u64,
+        result: Box<crate::actions::OpResult>,
+    },
+    RefreshDone {
+        job: u64,
+        generation: u64,
+        data: Vec<fc_core::compare::RefreshData>,
+        status: Option<String>,
+    },
     /// A worker panicked; the message is shown and the app goes back to idle.
     WorkerFailed {
         job: u64,
@@ -80,12 +101,12 @@ pub struct FolderCompareApp {
     pub progress: f32,
     pub progress_indeterminate: bool,
     pub file_progress: f32,
-    cancel: Arc<AtomicBool>,
+    pub cancel: Arc<AtomicBool>,
 
     // Workers
     pub tx: Sender<Msg>,
     rx: Receiver<Msg>,
-    job: u64,
+    pub job: u64,
 
     // Session overrides from the command line (not saved)
     force_non_recursive: bool,
@@ -438,6 +459,41 @@ impl FolderCompareApp {
                     elapsed,
                 } if job == self.job => self.on_compare_done(*outcome, elapsed),
                 Msg::CompareDone { .. } => {}
+                Msg::OpProgress {
+                    job,
+                    title,
+                    progress,
+                } if job == self.job => self.on_op_progress(&title, &progress),
+                Msg::OpProgress { .. } => {}
+                Msg::Overwrite { conflict, reply } => self.dialogs.push(Dialog::Overwrite {
+                    conflict,
+                    apply_to_all: false,
+                    reply,
+                }),
+                Msg::OpDone {
+                    job,
+                    generation,
+                    result,
+                } => {
+                    if job == self.job {
+                        self.on_op_done(generation, *result);
+                    }
+                }
+                Msg::RefreshDone {
+                    job,
+                    generation,
+                    data,
+                    status,
+                } => {
+                    if job == self.job {
+                        self.busy = Busy::Idle;
+                        self.progress_indeterminate = false;
+                    }
+                    self.apply_refresh(generation, data);
+                    if let Some(s) = status {
+                        self.status_text = s;
+                    }
+                }
                 Msg::WorkerFailed {
                     job,
                     title,
@@ -538,8 +594,10 @@ impl FolderCompareApp {
     }
 
     fn handle_outcome(&mut self, outcome: Outcome) {
+        let Some(outcome) = self.handle_operation_outcome(outcome) else {
+            return;
+        };
         match outcome {
-            Outcome::Closed | Outcome::Confirmed(ConfirmAction::None) => {}
             Outcome::Confirmed(ConfirmAction::ReplaceProfile(i)) => {
                 if let Some(p) = self.pending_profile.take()
                     && i < self.settings.profiles.len()
@@ -549,13 +607,14 @@ impl FolderCompareApp {
                     self.save_settings();
                 }
             }
-            Outcome::Confirmed(ConfirmAction::DeleteProfile(i)) => {
-                if i < self.settings.profiles.len() {
-                    self.settings.profiles.remove(i);
-                    self.selected_profile = None;
-                    self.save_settings();
-                }
+            Outcome::Confirmed(ConfirmAction::DeleteProfile(i))
+                if i < self.settings.profiles.len() =>
+            {
+                self.settings.profiles.remove(i);
+                self.selected_profile = None;
+                self.save_settings();
             }
+            _ => {}
         }
     }
 

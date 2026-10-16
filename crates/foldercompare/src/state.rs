@@ -135,6 +135,7 @@ fn side(left: bool) -> fc_core::model::Side {
     }
 }
 
+#[cfg(test)]
 pub fn status_glyph(status: DiffStatus) -> &'static str {
     match status {
         DiffStatus::NewerLeft | DiffStatus::OnlyLeft => "→",
@@ -511,6 +512,7 @@ impl MainState {
         self.selected.contains(&id)
     }
 
+    #[cfg(test)]
     pub fn selection_count(&self) -> usize {
         self.selected.len()
     }
