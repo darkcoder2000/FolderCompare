@@ -10,6 +10,10 @@ regex.workspace = true
 encoding_rs.workspace = true
 filetime.workspace = true
 tracing.workspace = true
+chrono.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem"] }
 
 [dev-dependencies]
 tempfile.workspace = true

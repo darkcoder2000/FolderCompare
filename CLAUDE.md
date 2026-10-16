@@ -70,3 +70,11 @@ The C# projects stay untouched on this branch until the Rust app reaches parity.
   `AtomicBool`; scans run on two scoped threads with a large stack (recursion per folder level, max 512).
 - Tests in `crates/fc-core/tests/` run on the real file system (`tempfile`, `filetime`); test paths are written with
   `\` and mapped by `common::p`. OS-specific cases use `#[cfg(...)]`.
+- Rust safety invariants (same as above): `ops::ensure_inside_root` (lexical `..` resolution, ordinal, strictly
+  inside) guards every copy/delete/rename target; `ops::validate_roots` ignores case. `FileOperationExecutor`
+  copies to `<name>.tmpcopy` (1 MiB buffer), sets mtime (+ creation time on Windows/macOS) through the handle,
+  renames over the target, copies attributes (Windows) or the mode (Unix), then verifies size/mtime/mode. Deletes go
+  through the `ops::Trash` trait (the app wraps the `trash` crate). Every outcome is logged with `tracing`.
+  Raw Win32 calls need the `\?\` prefix for long paths (std adds it itself).
+- `report.rs` (CSV/TXT, the app adds the BOM) and `shell_layout.rs` (Explorer registry layout, `classify`) are pure
+  and tested on every OS.
