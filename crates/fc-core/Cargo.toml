@@ -1,0 +1,15 @@
+[package]
+name = "fc-core"
+description = "FolderCompare core: scanning, comparison, file operations and text diff (no UI)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+regex.workspace = true
+encoding_rs.workspace = true
+filetime.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -1,0 +1,22 @@
+[workspace]
+resolver = "3"
+members = ["crates/fc-core", "crates/foldercompare"]
+
+[workspace.package]
+version = "2.0.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/darkcoder2000/FolderCompare"
+
+[workspace.dependencies]
+fc-core = { path = "crates/fc-core" }
+regex = "1.13"
+encoding_rs = "0.8.42"
+filetime = "0.2.29"
+tracing = "0.1.44"
+tempfile = "3.27"
+
+[profile.release]
+lto = "thin"
+strip = true
+codegen-units = 4

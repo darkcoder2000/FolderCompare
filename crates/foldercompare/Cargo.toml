@@ -1,0 +1,14 @@
+[package]
+name = "foldercompare"
+description = "FolderCompare: compare and synchronize two folders"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "FolderCompare"
+path = "src/main.rs"
+
+[dependencies]
+fc-core.workspace = true
+tracing.workspace = true

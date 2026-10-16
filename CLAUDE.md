@@ -51,3 +51,13 @@ See README.md for features, shortcuts and layout. This file holds working knowle
 ## Verifying UI changes
 There are no automated UI tests. Run the Debug build, check the relevant items in `docs/MANUAL_TESTS.md`,
 and add new checklist items for new features. When automating with SendKeys use the grouped form `^(n)`.
+
+## Rust port (branch `rust-port`)
+Full reimplementation in Rust + egui/eframe for Windows, Linux and macOS (plan: `PLAN-rust-port.md`, untracked).
+The C# projects stay untouched on this branch until the Rust app reaches parity.
+- Cargo workspace at the repo root (edition 2024, shared `[workspace.dependencies]`):
+  - `crates/fc-core` – library without UI dependencies (counterpart of `FolderCompare.Core`).
+  - `crates/foldercompare` – the egui app, binary `FolderCompare`.
+- `cargo build`, `cargo test --workspace`, `cargo fmt --all --check`,
+  `cargo clippy --workspace --all-targets -- -D warnings` – all must pass before committing, on Windows and Linux.
+- CI: `.github/workflows/rust.yml` (Windows, Linux, macOS: fmt, clippy, test).
