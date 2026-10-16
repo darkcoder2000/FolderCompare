@@ -61,6 +61,8 @@ The C# projects stay untouched on this branch until the Rust app reaches parity.
 - `cargo build`, `cargo test --workspace`, `cargo fmt --all --check`,
   `cargo clippy --workspace --all-targets -- -D warnings` – all must pass before committing, on Windows and Linux.
 - CI: `.github/workflows/rust.yml` (Windows, Linux, macOS: fmt, clippy, test).
+  Its `publish` job (after `build`) uploads release builds per push as run artifacts: win-x64 exe,
+  linux-x64 tar.gz, macos-arm64/x64 `.app` zips, named `FolderCompare-<version>-<sha>-<os>` (30 days).
 - fc-core layout: `model.rs` (options, `DiffStatus` – variant order is the sort order –, `FileSnapshot`, arena
   `DiffTree` with `NodeId`; refresh grafts new nodes and marks replaced ones `alive = false`), `compare/`
   (`scanner`, `engine` = `DiffEngine::compare`/`prepare_refresh` + `DiffResult::apply_refresh`, `content`,
