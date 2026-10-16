@@ -189,15 +189,17 @@ public class DiffEngineTests
     {
         var fs = Create();
         var r = fs.Compare();
-        // The mock file system behaves like the host OS: case-insensitive on Windows/macOS, case-sensitive on Linux.
-        Assert.Equal(!OperatingSystem.IsLinux(), r.Options.Paths.IsIgnoreCase);
-        Assert.Equal(PathComparison.ForCurrentOS().IsIgnoreCase, PathComparison.ForRoots(fs, L, R).IsIgnoreCase);
+        // The mock file system ignores case only on Windows; on Linux and macOS it is case-sensitive. On macOS the OS
+        // default (ignore case) is therefore overridden by the probe of the roots.
+        Assert.Equal(OperatingSystem.IsWindows(), r.Options.Paths.IsIgnoreCase);
+        Assert.Equal(OperatingSystem.IsWindows(), PathComparison.ForRoots(fs, L, R).IsIgnoreCase);
+        Assert.Equal(!OperatingSystem.IsLinux(), PathComparison.ForCurrentOS().IsIgnoreCase);
     }
 
     [Fact]
     public void CaseOnlyNamesInOneFolder_AreTwoRowsOnCaseSensitiveFileSystems()
     {
-        if (!OperatingSystem.IsLinux()) return; // needs a case-sensitive (mock) file system
+        if (OperatingSystem.IsWindows()) return; // needs a case-sensitive (mock) file system: Linux and macOS
         var fs = Create();
         fs.AddFile(P($@"{L}\a.txt"), T0, "lower");
         fs.AddFile(P($@"{L}\A.txt"), T0, "upper");
