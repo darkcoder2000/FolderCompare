@@ -61,3 +61,12 @@ The C# projects stay untouched on this branch until the Rust app reaches parity.
 - `cargo build`, `cargo test --workspace`, `cargo fmt --all --check`,
   `cargo clippy --workspace --all-targets -- -D warnings` – all must pass before committing, on Windows and Linux.
 - CI: `.github/workflows/rust.yml` (Windows, Linux, macOS: fmt, clippy, test).
+- fc-core layout: `model.rs` (options, `DiffStatus` – variant order is the sort order –, `FileSnapshot`, arena
+  `DiffTree` with `NodeId`; refresh grafts new nodes and marks replaced ones `alive = false`), `compare/`
+  (`scanner`, `engine` = `DiffEngine::compare`/`prepare_refresh` + `DiffResult::apply_refresh`, `content`,
+  `glob`, `timestamp`, `path_comparison`), `ops/` (safety, planner, executor).
+- Same cross-platform rules as the C# Core: relative paths use the OS separator (`model::join_relative`), names are
+  matched through `PathComparison` (`DiffResult::paths()`), dotfiles count as hidden on Unix. Cancellation is an
+  `AtomicBool`; scans run on two scoped threads with a large stack (recursion per folder level, max 512).
+- Tests in `crates/fc-core/tests/` run on the real file system (`tempfile`, `filetime`); test paths are written with
+  `\` and mapped by `common::p`. OS-specific cases use `#[cfg(...)]`.
