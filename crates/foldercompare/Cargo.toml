@@ -10,5 +10,17 @@ name = "FolderCompare"
 path = "src/main.rs"
 
 [dependencies]
+chrono = { workspace = true, default-features = false, features = ["clock", "std"] }
+dirs = "7"
+eframe = "0.36"
+egui-phosphor = "0.14"
+egui = "0.36"
 fc-core.workspace = true
+opener = { version = "0.9", features = ["reveal"] }
+rfd = "0.17"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tracing.workspace = true
+tracing-appender = "0.2"
+tracing-subscriber = "0.3"
+trash = "5"

@@ -82,3 +82,13 @@ The C# projects stay untouched on this branch until the Rust app reaches parity.
   `compare_lines`, `compare_inline`, `TextComparison` (fillers, `block_at`, `partner_line`), `compute_block_copy`
   over the `LineSource` trait, `codec` (BOM / strict UTF-8 / Windows-1252, byte-exact round trip; a text without
   line breaks gets the OS newline). All offsets inside lines are **chars**, not bytes or UTF-16 units.
+- App crate (`crates/foldercompare`, eframe/egui **0.36** – egui-phosphor 0.14 needs it): `main.rs` (logging via
+  `tracing-appender`, panic hook), `cli.rs`, `settings.rs` (same `settings.json` as WPF: PascalCase, enums as
+  strings, unknown fields kept in `extra`, `FOLDERCOMPARE_SETTINGS_DIR` overrides the folder – use it for test runs
+  so the user's settings stay untouched), `state.rs` (egui-free view model: filters, rows, sort, expansion,
+  selection, counts, `can_*` rules; unit-tested), `app.rs` (workers send `Msg` over an mpsc channel and call
+  `request_repaint`), `main_view.rs`, `result_list.rs` (hand-drawn virtualized list, status column fitted under the
+  swap button by `fit_columns`), `theme.rs` (**only place with colors**; fonts: Segoe UI / Noto / DejaVu / Helvetica
+  when present, Phosphor icons, Hack for monospace), `dialogs.rs` (`egui::Modal` stack).
+- Run the Debug build: `target/debug/FolderCompare.exe "left" "right" --compare`. Screenshots: `shot.ps1` in the
+  scratchpad (PrintWindow by process id).
