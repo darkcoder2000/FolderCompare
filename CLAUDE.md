@@ -98,3 +98,11 @@ The C# projects stay untouched on this branch until the Rust app reaches parity.
   both" copies) and applied only if `MainState::generation` is unchanged. Items the trash refused are offered for a
   permanent delete (never silently). Context-menu enable states are captured in `Enables` before the list borrows
   the state.
+- Text compare (`crates/foldercompare/src/text_compare/`): `buffer.rs` (lines keep their own endings → mixed
+  endings save byte-exact; char positions; undo groups – a block copy is one `begin_group`/`end_group` step; dirty =
+  not at the save point), `layout.rs` (`RowMap`: **every visual row is exactly one line height**, text or filler),
+  `pane.rs` (hand-drawn editor: gutter, hatched fillers, diff backgrounds, inline ranges, section outline,
+  selection, caret; tabs expand to 4 columns), `mod.rs` (window: recompare 250 ms after edits on a thread with a job
+  id, copy recompares synchronously first, shared scroll offset for both panes, overview bar, center strip, details,
+  save/reload/close prompts). Each window is its own native window (`show_viewport_deferred`, state in
+  `Arc<Mutex<…>>`); with two files on the command line `TextOnlyApp` runs it as the root window.

@@ -9,6 +9,9 @@ license.workspace = true
 name = "FolderCompare"
 path = "src/main.rs"
 
+[dev-dependencies]
+tempfile.workspace = true
+
 [dependencies]
 chrono = { workspace = true, default-features = false, features = ["clock", "std"] }
 dirs = "7"

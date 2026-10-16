@@ -114,6 +114,9 @@ pub struct FolderCompareApp {
     compare_on_startup: bool,
 
     pub dialogs: Vec<Dialog>,
+    pub text_windows: Vec<crate::text_compare::SharedWindow>,
+    /// The main window waits for text windows to answer their save prompts before closing.
+    pub exit_pending: bool,
     pub columns: [f32; 7],
     pub list: crate::result_list::ListView,
     /// Screen rects of the path boxes (drop targets) and the box a file is dragged over.
@@ -172,6 +175,8 @@ impl FolderCompareApp {
             force_content: options.content_compare,
             compare_on_startup: options.compare_on_startup(),
             dialogs: Vec::new(),
+            text_windows: Vec::new(),
+            exit_pending: false,
             columns,
             list: Default::default(),
             left_box: None,
@@ -699,9 +704,17 @@ impl eframe::App for FolderCompareApp {
             ));
         }
 
+        self.text_windows_ui(&ctx);
         if ctx.input(|i| i.viewport().close_requested()) {
-            self.save_window_state();
-            info!("FolderCompare exiting");
+            if self.confirm_close_text_windows() {
+                self.save_window_state();
+                info!("FolderCompare exiting");
+            } else {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            }
+        } else if self.exit_pending && self.text_windows.is_empty() {
+            self.exit_pending = false;
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }
     }
 }

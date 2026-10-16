@@ -20,6 +20,7 @@ use crate::app::{Busy, FolderCompareApp, Msg, spawn_worker};
 use crate::dialogs::{ConfirmAction, Dialog, InputPurpose, Outcome, PendingOp};
 use crate::platform::{self, AppTrash, TRASH_FAILED};
 use crate::state::{format_count, format_size};
+use crate::text_compare::{self, TextCompareRequest, TextCompareWindow};
 
 /// Result of an operation, sent back by the worker.
 pub struct OpResult {
@@ -382,7 +383,7 @@ impl FolderCompareApp {
         self.refresh_in_background(requests, Some(status), Busy::Scanning);
     }
 
-    fn refresh_in_background(
+    pub fn refresh_in_background(
         &mut self,
         requests: Vec<RefreshRequest>,
         status: Option<String>,
@@ -605,6 +606,10 @@ impl FolderCompareApp {
                 self.execute(op);
                 None
             }
+            Outcome::Confirmed(ConfirmAction::OpenText(request)) => {
+                self.open_text(request);
+                None
+            }
             Outcome::DeleteSide { sides, nodes } => {
                 self.delete_sides(nodes, sides);
                 None
@@ -634,8 +639,113 @@ impl FolderCompareApp {
         }
     }
 
-    /// Opens the text compare window for the selected file (filled in with the text compare window).
-    pub fn compare_contents(&mut self) {}
+    /// Opens the text compare window for the selected file; files over 20 MB need a confirmation.
+    pub fn compare_contents(&mut self) {
+        if !self.state.can_compare_contents(self.is_busy()) {
+            return;
+        }
+        let (Some(result), Some(id)) = (&self.state.result, self.state.first_selected()) else {
+            return;
+        };
+        let node = result.tree.node(id);
+        let path = |side: Side| match node.get(side) {
+            Some(s) => s.full_path.clone(),
+            None => result.root_for(side).join(&node.relative_path),
+        };
+        let request = TextCompareRequest {
+            left: path(Side::Left),
+            left_exists: node.left.is_some(),
+            right: path(Side::Right),
+            right_exists: node.right.is_some(),
+            title: node.relative_path.clone(),
+            relative_path: Some(node.relative_path.clone()),
+        };
+        match text_compare::large_file(&request) {
+            Some(big) => self.dialogs.push(Dialog::confirm(
+                "Compare contents",
+                text_compare::large_file_message(&big),
+                ConfirmAction::OpenText(request),
+            )),
+            None => self.open_text(request),
+        }
+    }
+
+    pub fn open_text(&mut self, request: TextCompareRequest) {
+        match TextCompareWindow::open(&self.ctx, request, self.settings.text_compare.clone()) {
+            Ok(w) => self.text_windows.push(Arc::new(std::sync::Mutex::new(w))),
+            Err(e) => self.dialogs.push(Dialog::info("Compare contents", e)),
+        }
+    }
+
+    /// Shows the open text compare windows; handles saves (rescan the row) and closed windows.
+    pub fn text_windows_ui(&mut self, ctx: &egui::Context) {
+        let mut rescan = Vec::new();
+        let mut cancelled = false;
+        self.text_windows.retain(|w| {
+            let mut guard = w.lock().unwrap();
+            if std::mem::take(&mut guard.saved)
+                && let Some(rel) = guard.relative_path()
+            {
+                rescan.push(rel.to_string());
+            }
+            cancelled |= std::mem::take(&mut guard.close_cancelled);
+            if guard.closed {
+                self.settings.text_compare = guard.settings.clone();
+                false
+            } else {
+                true
+            }
+        });
+        for w in &self.text_windows {
+            text_compare::show_deferred(ctx, w);
+        }
+        for rel in rescan {
+            self.rescan_path(&rel);
+        }
+        if cancelled {
+            self.exit_pending = false;
+        }
+    }
+
+    /// Refreshes a file's row after the text compare window saved it.
+    fn rescan_path(&mut self, rel: &str) {
+        let Some(result) = &self.state.result else {
+            return;
+        };
+        if self.is_busy() {
+            return;
+        }
+        let Some(id) = result.tree.find(rel) else {
+            return;
+        };
+        let node = result.tree.node(id);
+        let Some(parent) = node.parent else { return };
+        let request = result.refresh_request(parent, &node.name);
+        self.refresh_in_background(vec![request], None, Busy::Scanning);
+    }
+
+    /// Before the main window closes: every text window with unsaved changes asks first.
+    pub fn confirm_close_text_windows(&mut self) -> bool {
+        let dirty: Vec<_> = self
+            .text_windows
+            .iter()
+            .filter(|w| w.lock().unwrap().is_dirty())
+            .cloned()
+            .collect();
+        if dirty.is_empty() {
+            for w in std::mem::take(&mut self.text_windows) {
+                let mut w = w.lock().unwrap();
+                w.finish_close();
+                self.settings.text_compare = w.settings.clone();
+            }
+            return true;
+        }
+        for w in dirty {
+            w.lock().unwrap().close_requested = true;
+        }
+        self.exit_pending = true;
+        false
+    }
 
     /// Selects every visible row with `status` (context menu).
     pub fn select_status(&mut self, status: DiffStatus) {

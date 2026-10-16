@@ -1,7 +1,5 @@
 //! The only place colors are defined (light theme, from the WPF app's Colors.xaml plus the colors that were
 //! hard-coded there), plus fonts, icons and the egui style.
-// The text compare colors are used once the text compare window lands.
-#![allow(dead_code)]
 
 use egui::{Color32, FontData, FontDefinitions, FontFamily, FontId, TextStyle};
 

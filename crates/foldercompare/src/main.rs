@@ -9,6 +9,7 @@ mod platform;
 mod result_list;
 mod settings;
 mod state;
+mod text_compare;
 mod theme;
 
 use std::any::Any;
@@ -27,6 +28,11 @@ pub fn panic_message(panic: &Box<dyn Any + Send>) -> String {
     } else {
         "Unknown error".to_string()
     }
+}
+
+/// The window icon (set in Step 7).
+pub fn app_icon() -> Option<std::sync::Arc<egui::IconData>> {
+    None
 }
 
 /// Rolling daily log files, 14 kept. The guard flushes the log when dropped.
@@ -88,16 +94,92 @@ fn main() {
     let options = CommandLineOptions::parse(&args);
     let settings = settings::load(&settings::settings_path());
 
+    let mut main_viewport = viewport(&settings);
+    if let Some(icon) = app_icon() {
+        main_viewport = main_viewport.with_icon(icon);
+    }
     let native = eframe::NativeOptions {
-        viewport: viewport(&settings),
+        viewport: main_viewport,
         persist_window: false,
         ..Default::default()
     };
-    let result = eframe::run_native(
-        "FolderCompare",
-        native,
-        Box::new(move |cc| Ok(Box::new(app::FolderCompareApp::new(cc, options, settings)))),
-    );
+    // Two existing files: only the text compare window (e.g. Explorer "Compare Files"); exits when it closes.
+    let two_files = match (&options.left, &options.right) {
+        (Some(l), Some(r)) => {
+            let (l, r) = (std::path::Path::new(l), std::path::Path::new(r));
+            (fc_core::shell_layout::classify(l, r) == fc_core::shell_layout::PairKind::BothFiles)
+                .then(|| {
+                    (
+                        std::path::absolute(l).unwrap_or(l.into()),
+                        std::path::absolute(r).unwrap_or(r.into()),
+                    )
+                })
+        }
+        _ => None,
+    };
+    let result = if let Some((left, right)) = two_files {
+        info!(
+            "Comparing files {} and {} from the command line",
+            left.display(),
+            right.display()
+        );
+        let name = |p: &std::path::Path| {
+            p.file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        };
+        let title = if fc_core::compare::PathComparison::IgnoreCase.eq(&name(&left), &name(&right))
+        {
+            name(&right)
+        } else {
+            format!("{} / {}", name(&left), name(&right))
+        };
+        let request = text_compare::TextCompareRequest {
+            left,
+            left_exists: true,
+            right,
+            right_exists: true,
+            title,
+            relative_path: None,
+        };
+        let mut viewport = egui::ViewportBuilder::default()
+            .with_title(format!("{} - Text compare", request.title))
+            .with_inner_size([1200.0, 800.0])
+            .with_min_inner_size([600.0, 300.0]);
+        if let Some(w) = &settings.text_compare.window
+            && w.width >= 300.0
+            && w.height >= 200.0
+        {
+            viewport = viewport
+                .with_inner_size([w.width as f32, w.height as f32])
+                .with_position([w.left as f32, w.top as f32])
+                .with_maximized(w.maximized);
+        }
+        if let Some(icon) = app_icon() {
+            viewport = viewport.with_icon(icon);
+        }
+        let native = eframe::NativeOptions {
+            viewport,
+            persist_window: false,
+            ..Default::default()
+        };
+        eframe::run_native(
+            "FolderCompare",
+            native,
+            Box::new(
+                move |cc| match text_compare::TextOnlyApp::new(cc, request, settings) {
+                    Ok(app) => Ok(Box::new(app) as Box<dyn eframe::App>),
+                    Err(e) => Err(e.into()),
+                },
+            ),
+        )
+    } else {
+        eframe::run_native(
+            "FolderCompare",
+            native,
+            Box::new(move |cc| Ok(Box::new(app::FolderCompareApp::new(cc, options, settings)))),
+        )
+    };
     if let Err(e) = result {
         error!("Startup failed: {e}");
         rfd::MessageDialog::new()

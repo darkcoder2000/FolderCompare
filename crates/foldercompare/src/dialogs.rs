@@ -33,6 +33,8 @@ pub enum ConfirmAction {
     DeleteProfile(usize),
     /// Run the operation (e.g. after the second confirmation of a permanent delete).
     Execute(PendingOp),
+    /// Open the text compare window (after the large file question).
+    OpenText(crate::text_compare::TextCompareRequest),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
