@@ -1,7 +1,7 @@
-# Renders the FolderCompare app icon (see src/FolderCompare.App/Assets/app-icon.svg)
+# Renders the FolderCompare app icon (see crates/foldercompare/assets/app-icon.svg)
 # into a multi-size .ico. Usage: pwsh tools/make-icon.ps1 [-Out <path>] [-PreviewDir <dir>]
 param(
-  [string]$Out = (Join-Path $PSScriptRoot '..\src\FolderCompare.App\Assets\app.ico'),
+  [string]$Out = (Join-Path $PSScriptRoot '..\crates\foldercompare\assets\app.ico'),
   [string]$PreviewDir
 )
 Add-Type -AssemblyName System.Drawing

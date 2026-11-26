@@ -1,5 +1,5 @@
-# Builds FolderCompare.ShellExt.dll (x64) with the MSVC Build Tools. Called by FolderCompare.App.csproj and
-# FolderCompare.Avalonia.csproj; a solution build runs both in parallel, so the compile is serialized by a mutex.
+# Builds FolderCompare.ShellExt.dll (x64) with the MSVC Build Tools. Called by crates/foldercompare/build.rs;
+# parallel cargo runs (build, clippy, test, IDE) can start it at the same time, so the compile is serialized by a mutex.
 param([string]$OutDir = (Join-Path $PSScriptRoot 'bin\x64'))
 
 $ErrorActionPreference = 'Stop'

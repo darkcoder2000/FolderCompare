@@ -117,13 +117,12 @@ Restart Explorer after changing the shell extension (`Stop-Process -Name explore
 - [ ] A binary file shows "is not a text file". A file larger than 20 MB asks first.
 - [ ] Closing the window, or the main window, with unsaved changes asks Save / Don't save / Cancel, and Cancel keeps it open.
 
-## Rust app (branch `rust-port`)
-The Rust/egui app (`target/debug/FolderCompare.exe`, or `publish/rust/<target>/` for release builds) must pass every
-item above. For test runs set `FOLDERCOMPARE_SETTINGS_DIR` to a scratch folder: the real `settings.json` (shared
-with the WPF app) stays untouched and an existing Explorer registration of another exe is left alone.
-Additional items:
-- [ ] Settings written by the WPF app are read (window bounds, column widths, filters, profiles, recent paths), and
-      the WPF app still reads the file after the Rust app saved it (unknown fields survive).
+## App specifics and per-OS checks
+Run `target/debug/FolderCompare(.exe)`, or `publish/rust/<target>/` for release builds. For test runs set
+`FOLDERCOMPARE_SETTINGS_DIR` to a scratch folder: the real `settings.json` stays untouched and an existing Explorer
+registration of another exe is left alone.
+- [ ] Settings written by the 1.x (WPF) app are read (window bounds, column widths, filters, profiles, recent
+      paths), and unknown fields survive when the file is saved again.
 - [ ] The status column stays centered under the ⇄ button while resizing the window and the size/date columns.
 - [ ] Keyboard in the list: Up/Down/PgUp/PgDn/Home/End move the focus (Shift extends), Ctrl+Up/Down move only
       the focus, Space toggles, Right/Left expand/collapse/jump to the parent, Enter toggles or opens the text compare.
@@ -140,9 +139,9 @@ Additional items:
 - [ ] Two files on the command line open only the text compare window; closing it exits the app.
 
 ### Windows
-- [ ] The exe shows the app icon, version 2.0.0 in its properties, and no console window (release build).
-- [ ] Tools > Explorer context menu integration registers/unregisters; the entries work with the Rust exe and the
-      registry layout is the same as the WPF app's (switching between both apps re-registers on start).
+- [ ] The exe shows the app icon, the current version in its properties, and no console window (debug and release).
+- [ ] Tools > Explorer context menu integration registers/unregisters, and the entries work. With the integration
+      on in a 1.x installation, starting the 2.x exe once takes the entries over (same registry layout).
 - [ ] Delete goes to the Recycle Bin; long paths (> 260 chars) can be compared and copied.
 
 ### Linux (WSLg or a desktop)
