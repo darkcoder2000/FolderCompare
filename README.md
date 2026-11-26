@@ -1,11 +1,11 @@
 # FolderCompare
 
-A fast, portable, safety-first folder comparison tool for Windows.
+A fast, portable, safety-first folder comparison tool for Windows, Linux and macOS.
 
 [![Latest release](https://img.shields.io/github/v/release/darkcoder2000/FolderCompare)](https://github.com/darkcoder2000/FolderCompare/releases/latest)
 [![License: MIT](https://img.shields.io/github/license/darkcoder2000/FolderCompare)](LICENSE)
-![.NET 8](https://img.shields.io/badge/.NET-8-512BD4)
-![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D6)
+![Rust](https://img.shields.io/badge/Rust-egui-B7410E)
+![Platforms: Windows, Linux, macOS](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-0078D6)
 
 FolderCompare compares two directory trees **by last-write timestamp and size** (with optional byte-by-byte
 verification), shows the result side by side, and lets you copy, delete or rename items from a right-click menu or
@@ -17,18 +17,25 @@ the keyboard.
 
 ## Download
 
-Get `FolderCompare.exe` from the [latest release](https://github.com/darkcoder2000/FolderCompare/releases/latest)
-and run it. It's a single file for Windows x64, with no installer, no admin rights and no .NET runtime needed.
+Get the build for your system from the [latest release](https://github.com/darkcoder2000/FolderCompare/releases/latest):
+
+* **Windows x64:** `FolderCompare.exe` (or the `-win-x64.zip`). A single file, no installer, no admin rights.
+* **Linux x64:** `-linux-x64.tar.gz` with the `FolderCompare` binary.
+* **macOS:** `-macos-arm64.zip` (Apple Silicon) or `-macos-x64.zip` (Intel) with `FolderCompare.app`. The app is
+  ad-hoc signed, so open it the first time via right-click → *Open*.
+
+`SHA256SUMS.txt` lists the checksums. Version 2.0 replaced the earlier Windows-only .NET app (1.x); settings and
+profiles carry over.
 
 ## Why FolderCompare?
 
-* **Portable single exe.** Nothing to install, no admin rights, no .NET runtime.
+* **Portable single binary.** Nothing to install, no admin rights, no runtime. Runs on Windows, Linux and macOS.
 * **Fast on large trees.** By default it compares timestamps and sizes and never reads file contents. Content
   verification is optional and only reads the files that need it.
 * **Timestamp tolerance.** Configurable tolerance (default 2 s) and an optional 1-hour DST tolerance for NTFS vs.
   FAT/exFAT/NAS copies.
 * **Safety-first file operations.** Copies use a temp file and rename, targets are checked against the root, deletes
-  go to the Recycle Bin, and every operation is logged.
+  go to the Recycle Bin / Trash, and every operation is logged.
 * **Built-in text diff.** Side-by-side, word-level highlights, editable panes, and the file's encoding and line
   endings are kept when you save.
 
@@ -42,13 +49,13 @@ and run it. It's a single file for Windows x64, with no installer, no admin righ
 ### Command line
 
 ```
-FolderCompare.exe "C:\A" "D:\B" [--compare] [--no-recursive] [--content off|equal-time|equal-size]
+FolderCompare "C:\A" "D:\B" [--compare] [--no-recursive] [--content off|equal-time|equal-size]
 ```
 
 `--compare` starts the comparison immediately. `--no-recursive` compares only the top level for this session.
 `--content` overrides the content verification mode for this session (see [How it compares](#how-it-compares)).
 
-### Explorer context menu
+### Explorer context menu (Windows)
 
 Turn on *Tools → Explorer context menu integration* to add entries to the right-click menu of files and folders
 in Windows Explorer. The menu shows only the entries that make sense for the current selection:
@@ -93,7 +100,8 @@ Shift+F10). The integration requires 64-bit Windows on x64.
   equal. Their timestamps are left as they are.
 * Known limitation: with verification off, a change that keeps the size and the timestamp (within the tolerance,
   or exactly 1 hour apart with the DST option) is not detected. Turn on verification when that matters.
-* Paths match case-insensitively. Long paths and Unicode are supported. Unreadable folders are marked as errors
+* Names match case-insensitively on Windows and macOS, and case-sensitively on Linux or on a case-sensitive
+  volume. Long paths and Unicode are supported. Unreadable folders are marked as errors
   and the scan continues.
 * Symbolic links and junctions are skipped by default. If you choose *Follow*, loops are detected.
 * In non-recursive mode, sub-folders that exist on both sides are shown without contents and marked `=`.
@@ -101,11 +109,11 @@ Shift+F10). The integration requires 64-bit Windows on x64.
 ## Safety
 
 * Scanning never modifies anything.
-* Every copy and delete target is checked to be strictly inside the chosen root (after `GetFullPath`).
+* Every copy, delete and rename target is checked to be strictly inside the chosen root (after resolving `..`).
 * Comparing a folder with itself, or with a folder nested inside it, is refused.
 * Copies go to `<name>.tmpcopy` first and are renamed on success. Timestamps and attributes are preserved and
   verified (exists, size, timestamp). A cancelled copy leaves no partial file.
-* Deletes go to the Recycle Bin by default. Permanent delete needs an extra confirmation.
+* Deletes go to the Recycle Bin / Trash by default. Permanent delete needs an extra confirmation.
 * Overwriting a file that is newer than the source always asks first, with a warning.
 
 ## Keyboard
@@ -157,35 +165,40 @@ A file that exists on one side only opens against an empty pane.
 
 ## Files
 
-* Settings: `%APPDATA%\FolderCompare\settings.json` (options, last folders, recent paths, profiles, window and columns)
-* Logs: `%LOCALAPPDATA%\FolderCompare\logs` (daily, kept 14 days; every file operation is logged). Open it via *File → Open log folder*.
+| | Windows | Linux | macOS |
+|---|---|---|---|
+| Settings (`settings.json`: options, last folders, recent paths, profiles, window, columns) | `%APPDATA%\FolderCompare` | `~/.config/FolderCompare` | `~/Library/Application Support/FolderCompare` |
+| Logs (daily, kept 14 days; every file operation is logged) | `%LOCALAPPDATA%\FolderCompare\logs` | `~/.local/state/FolderCompare/logs` | `~/Library/Logs/FolderCompare` |
+
+Open the log folder via *File → Open log folder*.
 
 ## Build from source
 
-Requires the .NET 8 SDK (Windows).
+Requires a current stable Rust toolchain ([rustup](https://rustup.rs)). On Windows the Explorer context menu
+extension is built with the MSVC Build Tools (C++ workload); without them the app is built without that
+integration. On Linux, eframe needs the usual X11/Wayland development packages (see `.github/workflows/rust.yml`).
 
-```powershell
-dotnet build
-dotnet test
-dotnet run --project src/FolderCompare.App -- "C:\A" "D:\B" --compare
+```sh
+cargo build
+cargo test --workspace
+cargo run -p foldercompare -- "C:\A" "D:\B" --compare
 ```
 
-To publish the single-file exe:
-
-```powershell
-dotnet publish src/FolderCompare.App -c Release -o publish
-```
-
-The Release configuration produces a self-contained, single-file `publish\FolderCompare.exe` (win-x64).
+Release build: `cargo build --release` → `target/release/FolderCompare(.exe)`. Pushing a tag `v2.X.Y` builds and
+packages all platforms in CI (`.github/workflows/rust-release.yml`).
 
 ### Project layout
 
 ```
-src/FolderCompare.Core/        comparison engine, models, file operations, text diff (no WPF dependency)
-src/FolderCompare.App/         WPF app (MVVM with CommunityToolkit.Mvvm)
-tests/FolderCompare.Core.Tests xUnit tests (System.IO.Abstractions mock file system + a few real-FS tests)
-tools/New-ExampleDiff.ps1      creates two example folders that cover every compare case
-docs/MANUAL_TESTS.md           manual test checklist
+crates/fc-core/                 comparison engine, models, file operations, reports, text diff (no UI dependency)
+crates/fc-core/tests/           integration tests on the real file system
+crates/foldercompare/           the app (egui/eframe), binary FolderCompare
+crates/foldercompare/shellext/  Windows Explorer context menu extension (C++, embedded in the exe)
+crates/foldercompare/assets/    app icon (SVG source, .ico, PNG)
+build/macos/make-app.sh         builds the macOS .app bundle
+tools/New-ExampleDiff.ps1       creates two example folders that cover every compare case
+tools/make-icon.ps1             renders the app icon into the .ico
+docs/MANUAL_TESTS.md            manual test checklist
 ```
 
 ## Comparison with other tools
@@ -197,7 +210,7 @@ current details.
 | | FolderCompare | WinMerge | Beyond Compare | FreeFileSync |
 |---|---|---|---|---|
 | License | Free, MIT | Free, GPL | Commercial | Free, GPL |
-| Platforms | Windows | Windows | Windows, macOS, Linux | Windows, macOS, Linux |
+| Platforms | Windows, macOS, Linux | Windows | Windows, macOS, Linux | Windows, macOS, Linux |
 | Folder comparison | Date and size, optional contents | Contents, size, date | Contents, size, date | Date and size, or contents |
 | Text diff | Yes, two-way | Yes, two- and three-way | Yes, two- and three-way | No |
 | Focus | Quick comparison, manual copy | Diff and merge | Diff and merge | Folder synchronization |
@@ -209,20 +222,20 @@ If you need byte-level folder comparison, three-way merge or automatic sync, one
 
 Planned:
 
-* Dark theme / follow the system theme (colors already live in `Themes/Colors.xaml`)
-* `.resx` localization
+* Dark theme / follow the system theme (colors already live in `theme.rs`)
+* Localization
 * Flat list view mode
 * Rubber-band selection
 
-Ideas, not planned yet: content/hash comparison of whole folders, three-way compare, remote locations. The engine
-works on `System.IO.Abstractions.IFileSystem`, so another file-system provider can be plugged in later.
+Ideas, not planned yet: content/hash comparison of whole folders, three-way compare, remote locations.
 
 ## Contributing
 
-Bug reports, ideas and pull requests are welcome. Please open an issue first for bigger changes. Run `dotnet test`
+Bug reports, ideas and pull requests are welcome. Please open an issue first for bigger changes. Run
+`cargo test --workspace`, `cargo fmt --all --check` and `cargo clippy --workspace --all-targets -- -D warnings`
 before submitting. For UI changes, check the relevant items in [docs/MANUAL_TESTS.md](docs/MANUAL_TESTS.md).
-When reporting a bug, include your Windows version, the app version and, if possible, the log file from
-`%LOCALAPPDATA%\FolderCompare\logs`.
+When reporting a bug, include your OS and version, the app version and, if possible, the log file (see
+[Files](#files)).
 
 ## License
 

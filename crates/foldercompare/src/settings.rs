@@ -1,4 +1,4 @@
-//! `settings.json`, shared with the WPF app: PascalCase names, enums as strings, missing fields take their
+//! `settings.json`, compatible with the 1.x (WPF) app: PascalCase names, enums as strings, missing fields take their
 //! defaults, unknown fields are kept when writing back. Written atomically through `settings.json.tmp`.
 
 use std::fs;

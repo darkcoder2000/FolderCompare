@@ -15,7 +15,7 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$binary" "$app/Contents/MacOS/FolderCompare"
 chmod +x "$app/Contents/MacOS/FolderCompare"
 
-# Icon: all iconset sizes scaled from the 256 px rendering of Assets/app-icon.svg (tools/make-icon.ps1).
+# Icon: all iconset sizes scaled from the 256 px rendering of assets/app-icon.svg (tools/make-icon.ps1).
 iconset="$(mktemp -d)/FolderCompare.iconset"
 mkdir -p "$iconset"
 for size in 16 32 128 256 512; do

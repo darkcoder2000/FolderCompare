@@ -1,5 +1,5 @@
 //! Commands of the main window: copy, delete, rename, rescan, export, shell actions, settings and profiles.
-//! Same order and messages as the WPF `MainViewModel`.
+//! Same order and messages as the former WPF `MainViewModel` (1.x).
 
 use std::path::PathBuf;
 use std::sync::Arc;

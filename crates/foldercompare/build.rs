@@ -1,4 +1,4 @@
-//! Windows only: builds the native Explorer extension (`src/FolderCompare.ShellExt`, MSVC) to embed it, and
+//! Windows only: builds the native Explorer extension (`shellext/`, MSVC) to embed it, and
 //! compiles the icon, manifest and version info into the exe.
 
 use std::env;
@@ -31,7 +31,7 @@ fn build_shell_extension(manifest_dir: &Path) {
         );
         return;
     }
-    let dir = manifest_dir.join("../../src/FolderCompare.ShellExt");
+    let dir = manifest_dir.join("shellext");
     for f in ["ShellExt.cpp", "ShellExt.def", "build.ps1"] {
         println!("cargo::rerun-if-changed={}", dir.join(f).display());
     }
@@ -56,7 +56,7 @@ fn build_shell_extension(manifest_dir: &Path) {
 
 fn compile_resources(manifest_dir: &Path) {
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let icon = manifest_dir.join("../../src/FolderCompare.App/Assets/app.ico");
+    let icon = manifest_dir.join("assets/app.ico");
     let manifest = manifest_dir.join("windows/app.manifest");
     println!("cargo::rerun-if-changed={}", manifest.display());
     println!("cargo::rerun-if-changed={}", icon.display());

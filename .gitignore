@@ -1,9 +1,7 @@
 bin/
 obj/
 .vs/
-*.user
 publish/
-TestResults/
 CLAUDE.local.md
 exampleDiff/
 docs/promo/

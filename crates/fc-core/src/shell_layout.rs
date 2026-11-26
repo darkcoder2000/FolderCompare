@@ -1,6 +1,6 @@
 //! Registry layout of the Windows Explorer context menu. The entries are `IExplorerCommand` handlers in
 //! FolderCompare.ShellExt.dll, which decides visibility and titles itself and keeps the selected left item.
-//! The CLSIDs and the `Software\FolderCompare` value names must match src/FolderCompare.ShellExt/ShellExt.cpp.
+//! The CLSIDs and the `Software\FolderCompare` value names must match crates/foldercompare/shellext/ShellExt.cpp.
 //! Pure data, so it is testable on every OS.
 
 use std::path::Path;
