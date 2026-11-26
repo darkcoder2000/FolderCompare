@@ -1,4 +1,5 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// GUI subsystem in every build: no console window (all output goes to the log file).
+#![cfg_attr(not(test), windows_subsystem = "windows")]
 
 mod actions;
 mod app;

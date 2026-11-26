@@ -182,7 +182,12 @@ impl ListView {
         let output = area.show_rows(ui, ROW_HEIGHT, total_rows, |ui, range| {
             ui.spacing_mut().item_spacing = Vec2::ZERO;
             for index in range {
-                let row = state.rows[index];
+                // Collapsing a folder in an earlier row shrinks `state.rows` while this range still covers
+                // the old count; the rest is drawn next frame.
+                let Some(&row) = state.rows.get(index) else {
+                    ui.ctx().request_repaint();
+                    break;
+                };
                 let (rect, response) =
                     ui.allocate_exact_size(vec2(width - SCROLLBAR, ROW_HEIGHT), Sense::click());
                 if !ui.is_rect_visible(rect) {
